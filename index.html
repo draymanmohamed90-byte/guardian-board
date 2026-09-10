@@ -401,6 +401,26 @@
   <div class="modal" id="modal-body"></div>
 </div>
 
+<!-- Firebase (Firestore) — this is what makes the board live and shared across every
+     device, no accounts needed for anyone viewing or using it. The config below is
+     a public identifier, not a secret; access is controlled by your Firestore Rules,
+     not by hiding this. -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyC45N7_b_GkSe_pDo074lcvMlHpeIBgnlI",
+    authDomain: "guardian-board-a7df9.firebaseapp.com",
+    projectId: "guardian-board-a7df9",
+    storageBucket: "guardian-board-a7df9.firebasestorage.app",
+    messagingSenderId: "676806226306",
+    appId: "1:676806226306:web:f39653eff4d2cd915c1f9b",
+    measurementId: "G-1VRH0FT05V"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var firestoreDb = firebase.firestore();
+</script>
+
 <script>
 (function(){
   "use strict";
@@ -500,88 +520,96 @@
     return 100 + delta;
   }
 
-  /* ================= store (saved to this browser's localStorage) =================
-     This standalone build has no server, so all data lives in localStorage on
-     THIS device, in THIS browser. It survives reloads and restarts, but does not
-     sync to any other computer, browser, or device — use the same browser on the
-     same machine every time. Clearing browser data / "Clear site data" / private
-     browsing will erase it, so consider using the JSON export in the History tab
-     as an occasional backup. */
-  var LS_KEYS = { students:"gb_students_v1", rules:"gb_rules_v1", meta:"gb_meta_v1" };
-
-  function lsGet(key){
-    try{ var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }
-    catch(e){ console.warn("localStorage read failed", e); return null; }
-  }
-  function lsSet(key, value){
-    try{ localStorage.setItem(key, JSON.stringify(value)); return true; }
-    catch(e){ console.warn("localStorage write failed — changes will not be saved", e); return false; }
-  }
-
+  /* ================= store (live, shared — backed by Firestore) =================
+     Every viewer of this page — you, colleagues, students, on any device, no
+     account needed — reads and writes the same shared data in real time via the
+     Firestore database set up for this project. localStorage is not used for
+     board data at all; the only thing kept in this browser is small per-device
+     preferences (sound mute, projector mode). */
   var Store = {
-    ready:false, storageOk:true,
+    ready:false, online:false, seeded:false,
     students:{}, rules: DEFAULT_RULES.slice(), meta: Object.assign({}, DEFAULT_META),
     listeners:[],
 
     init(){
       ROSTER.forEach(function(r){ Store.students[r.id] = emptyStudentDoc(r.name); });
 
-      var savedStudents = lsGet(LS_KEYS.students);
-      if(savedStudents){
-        Object.keys(savedStudents).forEach(function(id){
-          Store.students[id] = Object.assign(emptyStudentDoc(savedStudents[id].name||""), savedStudents[id]);
-        });
+      if(!window.firestoreDb){
+        console.warn("Firestore did not load — check your internet connection and the firebaseConfig block.");
+        this.ready = true;
+        this._emit();
+        return;
       }
-      var savedRules = lsGet(LS_KEYS.rules);
-      if(Array.isArray(savedRules) && savedRules.length) Store.rules = savedRules;
+      var db = window.firestoreDb;
 
-      var savedMeta = lsGet(LS_KEYS.meta);
-      if(savedMeta) Store.meta = Object.assign({}, DEFAULT_META, savedMeta);
-
-      // quick write test so we can warn the teacher if this browser can't persist at all
-      // (e.g. private/incognito mode in some browsers blocks localStorage outright)
-      this.storageOk = lsSet("gb_write_test", 1);
-
-      // keep multiple open tabs on this same device roughly in sync
-      window.addEventListener("storage", function(e){
-        if(e.key===LS_KEYS.students || e.key===LS_KEYS.rules || e.key===LS_KEYS.meta) Store._reload();
+      db.collection("students").onSnapshot(function(snap){
+        Store.online = true;
+        snap.forEach(function(doc){
+          var d = doc.data();
+          if(d) Store.students[doc.id] = Object.assign(emptyStudentDoc(d.name||""), d);
+        });
+        Store.ready = true;
+        Store._maybeSeed(db, snap.size);
+        Store._emit();
+      }, function(err){
+        console.warn("Firestore students subscription failed", err);
+        Store.online = false; Store.ready = true; Store._emit();
       });
 
-      this.ready = true;
-      this._emit();
+      db.collection("config").doc("rules").onSnapshot(function(doc){
+        if(doc.exists && doc.data() && Array.isArray(doc.data().eventTypes) && doc.data().eventTypes.length){
+          Store.rules = doc.data().eventTypes;
+        }
+        Store._emit();
+      });
+
+      db.collection("config").doc("meta").onSnapshot(function(doc){
+        if(doc.exists && doc.data()){ Store.meta = Object.assign({}, DEFAULT_META, doc.data()); }
+        Store._emit();
+      });
     },
 
-    _reload(){
-      var savedStudents = lsGet(LS_KEYS.students);
-      if(savedStudents){
-        Object.keys(savedStudents).forEach(function(id){
-          Store.students[id] = Object.assign(emptyStudentDoc(savedStudents[id].name||""), savedStudents[id]);
-        });
-      }
-      var savedRules = lsGet(LS_KEYS.rules);
-      if(Array.isArray(savedRules) && savedRules.length) this.rules = savedRules;
-      var savedMeta = lsGet(LS_KEYS.meta);
-      if(savedMeta) this.meta = Object.assign({}, DEFAULT_META, savedMeta);
-      this._emit();
+    // One-time bootstrap: if the students collection is completely empty (a brand
+    // new Firestore project), write the roster + default rules + meta once so the
+    // board has something to show. Never runs again once any student doc exists.
+    _maybeSeed(db, currentSize){
+      if(this.seeded || currentSize>0) return;
+      this.seeded = true;
+      var batch = db.batch();
+      ROSTER.forEach(function(r){
+        batch.set(db.collection("students").doc(r.id), emptyStudentDoc(r.name));
+      });
+      batch.set(db.collection("config").doc("rules"), {eventTypes: DEFAULT_RULES});
+      batch.set(db.collection("config").doc("meta"), DEFAULT_META);
+      batch.commit().catch(function(e){ console.warn("initial seed failed", e); Store.seeded=false; });
     },
 
     onChange(fn){ this.listeners.push(fn); },
     _emit(){ this.listeners.forEach(function(fn){ fn(); }); },
 
     saveStudent(id, doc){
-      this.students[id] = doc;
+      this.students[id] = doc; // optimistic local update, Firestore confirms via onSnapshot
       this._emit();
-      this.storageOk = lsSet(LS_KEYS.students, this.students);
+      if(window.firestoreDb){
+        window.firestoreDb.collection("students").doc(id).set(doc)
+          .catch(function(e){ console.warn("save failed", e); });
+      }
     },
     saveRules(rules){
       this.rules = rules;
       this._emit();
-      this.storageOk = lsSet(LS_KEYS.rules, rules);
+      if(window.firestoreDb){
+        window.firestoreDb.collection("config").doc("rules").set({eventTypes:rules})
+          .catch(function(e){ console.warn("save failed", e); });
+      }
     },
     saveMeta(meta){
       this.meta = Object.assign({}, this.meta, meta);
       this._emit();
-      this.storageOk = lsSet(LS_KEYS.meta, this.meta);
+      if(window.firestoreDb){
+        window.firestoreDb.collection("config").doc("meta").set(this.meta)
+          .catch(function(e){ console.warn("save failed", e); });
+      }
     }
   };
 
@@ -711,8 +739,9 @@
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 6a9 9 0 0 1 0 12"/></svg>';
 
     var banner = document.getElementById("demo-banner-slot");
-    banner.innerHTML = Store.storageOk ? "" :
-      '<div class="demo-banner">This browser is blocking saved data (often caused by private/incognito mode) — nothing you do right now will be kept after you close this tab. Open the board in a normal browser window to fix this.</div>';
+    banner.innerHTML = (Store.ready && !Store.online)
+      ? '<div class="demo-banner">Can\'t reach the live database right now — check your internet connection. Nothing you do will be saved until this reconnects.</div>'
+      : "";
   }
 
   function studentCard(s, id){

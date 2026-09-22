@@ -1,14 +1,1743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guardian Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#eef0f4; --surface:#ffffff; --surface-2:#f5f6f9; --surface-3:#eceff5;
+    --ink:#14161f; --ink-2:#494e5c; --muted:#868b9a; --line:#dfe2ea;
+    --header-bg:#182544; --header-ink:#eef0f4; --header-line:rgba(238,240,244,0.14);
+    --gold:#c9973f; --gold-soft:#f4e6cd; --gold-text:#8a5d1f; --gold-strong:#a8722c;
+    --good:#0ca30c; --warn:#fab219; --warn-text:#8a5d0c; --bad:#d03b3b;
+    --shadow-sm: 0 1px 2px rgba(20,22,31,0.07);
+    --shadow-md: 0 10px 28px rgba(20,22,31,0.12), 0 2px 6px rgba(20,22,31,0.06);
+    --radius: 16px;
+    --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --font-body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --bg:#0b0d13; --surface:#161a26; --surface-2:#1d2231; --surface-3:#242a3b;
+      --ink:#f1f2f7; --ink-2:#c7cbdb; --muted:#8c90a3; --line:#2c3244;
+      --header-bg:#101a34; --header-ink:#f1f2f7; --header-line:rgba(241,242,247,0.12);
+      --gold:#e0b465; --gold-soft:rgba(224,180,101,0.16); --gold-text:#e0b465; --gold-strong:#e6c179;
+      --warn-text:#fab219;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+      --shadow-md: 0 10px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#0b0d13; --surface:#161a26; --surface-2:#1d2231; --surface-3:#242a3b;
+    --ink:#f1f2f7; --ink-2:#c7cbdb; --muted:#8c90a3; --line:#2c3244;
+    --header-bg:#101a34; --header-ink:#f1f2f7; --header-line:rgba(241,242,247,0.12);
+    --gold:#e0b465; --gold-soft:rgba(224,180,101,0.16); --gold-text:#e0b465; --gold-strong:#e6c179;
+    --warn-text:#fab219;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 10px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
+  }
 
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    padding-inline:16px;
+  }
+  h1,h2,h3{font-family:var(--font-display); text-wrap:balance; margin:0;}
+  button{font-family:inherit;}
+  ::selection{background:var(--gold-soft);}
 
-Guardian Board
-CLASS 8C
+  a{color:inherit;}
 
-Board
-Leaderboard
-History
-Settings
-Week of —
+  /* ---------- layout shell ---------- */
+  .app{max-width:1280px; margin:0 auto; padding-block:0 40px;}
 
-This week's guardians
-Tap a student to award a shield or log something — everyone starts each week at 100.
-Guardian Board — conduct & participation tracker · scores reset automatically every Monday
+  .topbar{
+    position:sticky; top:0; z-index:30;
+    background:var(--header-bg); color:var(--header-ink);
+    margin-inline:-16px; padding:14px 16px;
+    display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+    box-shadow: var(--shadow-md);
+  }
+  .brand{display:flex; align-items:center; gap:10px; margin-right:auto;}
+  .brand .mark{width:34px; height:37px; flex:none;}
+  .brand .mark path{fill:var(--gold-strong);}
+  .brand-text{display:flex; flex-direction:column; line-height:1.1;}
+  .brand-text .name{font-family:var(--font-display); font-weight:700; font-size:1.15rem; letter-spacing:0.02em;}
+  .brand-text .sub{font-size:0.72rem; color:var(--header-ink); opacity:0.68; letter-spacing:0.08em; text-transform:uppercase;}
+
+  .class-select{
+    font-family:inherit; font-size:0.85rem; font-weight:600; padding:8px 12px; border-radius:10px;
+    border:1px solid var(--header-line); background:rgba(255,255,255,0.08); color:var(--header-ink);
+    cursor:pointer; flex:none;
+  }
+  .class-select option{ color:#14161f; }
+
+  .tabs{display:flex; gap:4px; background:rgba(255,255,255,0.08); padding:4px; border-radius:999px;}
+  .tab-btn{
+    border:none; background:transparent; color:var(--header-ink); opacity:0.72;
+    padding:8px 16px; border-radius:999px; font-size:0.88rem; font-weight:600; cursor:pointer;
+    transition:background .15s ease, opacity .15s ease;
+  }
+  .tab-btn:hover{opacity:1;}
+  .tab-btn.active{background:var(--gold); color:#241705; opacity:1;}
+
+  .top-right{display:flex; align-items:center; gap:10px; margin-left:auto;}
+  .week-chip{
+    font-size:0.78rem; color:var(--header-ink); opacity:0.85; border:1px solid var(--header-line);
+    padding:6px 12px; border-radius:999px; white-space:nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .icon-btn{
+    width:36px; height:36px; border-radius:50%; border:1px solid var(--header-line);
+    background:rgba(255,255,255,0.06); color:var(--header-ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex:none;
+    transition:background .15s ease;
+  }
+  .icon-btn:hover{background:rgba(255,255,255,0.16);}
+  .icon-btn svg{width:18px; height:18px;}
+  .icon-btn.active{background:var(--gold); border-color:var(--gold); color:#241705;}
+
+  .demo-banner{
+    background:var(--gold-soft); color:var(--gold-text); border:1px solid var(--gold);
+    border-radius:12px; padding:10px 16px; margin-top:14px; font-size:0.86rem;
+    display:flex; gap:8px; align-items:center;
+  }
+
+  section.view{display:none; padding-top:22px;}
+  section.view.active{display:block;}
+
+  /* ---------- shield mark ---------- */
+  .shield-icon{display:inline-block;}
+  .shield-icon svg{display:block;}
+
+  /* ---------- board view ---------- */
+  .board-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;}
+  .board-head h2{font-size:1.5rem;}
+  .board-head p{margin:2px 0 0; color:var(--ink-2); font-size:0.92rem;}
+  .att-summary{font-weight:600; font-size:0.8rem !important; margin-top:8px !important;}
+
+  .card-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(212px, 1fr)); gap:14px;
+  }
+  .g-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; cursor:pointer; box-shadow:var(--shadow-sm);
+    display:flex; flex-direction:column; gap:10px;
+    transition:transform .12s ease, box-shadow .12s ease;
+    position:relative; overflow:hidden;
+  }
+  .g-card:hover{transform:translateY(-2px); box-shadow:var(--shadow-md);}
+  .g-card:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+  .g-card .band-edge{position:absolute; inset:0 0 auto 0; height:4px;}
+  .g-card .row1{display:flex; align-items:center; gap:10px;}
+  .avatar{
+    width:46px; height:50px; flex:none; display:flex; align-items:center; justify-content:center;
+    clip-path:polygon(50% 0%, 100% 16%, 100% 58%, 50% 100%, 0% 58%, 0% 16%);
+    font-family:var(--font-display); font-weight:700; font-size:0.95rem; color:var(--header-ink);
+    background:var(--header-bg); box-shadow:inset 0 0 0 3px var(--avatar-ring, transparent);
+  }
+  .name-block{min-width:0;}
+  .name-block .first{font-weight:600; font-size:0.96rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .name-block .rest{font-size:0.74rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .score-row{display:flex; align-items:baseline; gap:8px;}
+  .score-num{font-family:var(--font-display); font-size:2.1rem; font-weight:700; font-variant-numeric:tabular-nums; line-height:1;}
+  .score-label{font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;}
+  .badge-pill{
+    margin-left:auto; font-size:0.68rem; font-weight:700; padding:3px 8px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:0.03em;
+  }
+  .shields-row{display:flex; align-items:center; gap:4px; flex-wrap:wrap; min-height:20px;}
+  .shields-row .shield-icon svg{width:16px; height:18px;}
+  .shields-row .more{font-size:0.72rem; color:var(--muted); margin-left:2px;}
+  .perfect-badge{
+    position:absolute; top:10px; right:10px; font-size:0.65rem; font-weight:700; color:var(--gold-text);
+    background:var(--gold-soft); border:1px solid var(--gold); padding:2px 7px; border-radius:999px;
+  }
+
+  /* ---------- Level-Up theme (switchable board skin) ----------
+     Same underlying data as the Guardian theme (shields, weekly score) —
+     this skin just puts the spotlight on long-term progress: every shield
+     ever earned (totals.shieldsEarned, never resets) drives a Level and
+     Rank, so students see a number that only ever goes up, alongside the
+     weekly conduct score which still resets each Monday. */
+  .app.theme-levelup .g-card{ padding-top:18px; }
+  .app.theme-levelup .g-card .band-edge{ background:var(--rank-color, var(--gold)) !important; height:5px; }
+  .lvl-top{display:flex; align-items:center; gap:12px;}
+  .lvl-avatar-wrap{position:relative; flex:none;}
+  .lvl-avatar{
+    width:50px; height:54px; display:flex; align-items:center; justify-content:center;
+    clip-path:polygon(50% 0%, 100% 16%, 100% 58%, 50% 100%, 0% 58%, 0% 16%);
+    font-family:var(--font-display); font-weight:700; font-size:1rem; color:#fff;
+    background:var(--rank-grad, var(--header-bg)); box-shadow:0 0 0 2px var(--surface), 0 0 0 3px var(--rank-color, var(--gold));
+  }
+  .lvl-badge{
+    position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    font-size:0.62rem; font-weight:800; color:#241705; background:var(--rank-color, var(--gold));
+    padding:1px 7px; border-radius:999px; border:2px solid var(--surface);
+  }
+  .lvl-rank-tag{
+    font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--rank-color, var(--gold-text));
+  }
+  .lvl-name{font-weight:600; font-size:0.96rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .xp-wrap{margin-top:2px;}
+  .xp-track{
+    width:100%; height:8px; border-radius:999px; background:var(--surface-3); overflow:hidden;
+    box-shadow:inset 0 1px 2px rgba(20,22,31,0.12);
+  }
+  .xp-fill{height:100%; border-radius:999px; background:var(--rank-grad, var(--gold)); transition:width .3s ease;}
+  .xp-caption{font-size:0.68rem; color:var(--muted); margin-top:4px; display:flex; justify-content:space-between;}
+  .wk-chip{
+    margin-left:auto; font-size:0.72rem; font-weight:700; padding:3px 9px; border-radius:999px;
+    background:var(--surface-2); color:var(--ink-2); white-space:nowrap;
+  }
+  .lvlup-toast{
+    position:fixed; top:18px; left:50%; transform:translateX(-50%) translateY(-20px); z-index:250;
+    background:var(--header-bg); color:var(--header-ink); border:1px solid var(--gold);
+    padding:12px 22px; border-radius:14px; font-family:var(--font-display); font-weight:700; font-size:1.1rem;
+    box-shadow:var(--shadow-md); opacity:0; transition:opacity .25s ease, transform .25s ease; pointer-events:none;
+    display:flex; align-items:center; gap:10px;
+  }
+  .lvlup-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .lvlup-toast .lv-num{color:var(--gold); font-size:1.3rem;}
+
+  /* ---------- attendance quick-mark row (every theme) ----------
+     A separate roll-call log, kept apart from shields/score entirely —
+     tap to mark, tap the same icon again to clear a mistaken mark. */
+  .att-row{display:flex; gap:6px; margin-top:auto; padding-top:10px;}
+  .att-btn{
+    flex:1; display:flex; align-items:center; justify-content:center; height:30px; border-radius:9px;
+    border:1px solid var(--line); background:var(--surface-2); color:var(--muted); cursor:pointer; padding:0;
+    transition:background .12s ease, color .12s ease, border-color .12s ease, transform .1s ease;
+  }
+  .att-btn svg{width:15px; height:15px;}
+  .att-btn:hover{border-color:var(--ink-2); transform:translateY(-1px);}
+  .att-btn.att-present.active{background:rgba(12,163,12,0.14); border-color:var(--good); color:var(--good);}
+  .att-btn.att-late.active{background:rgba(250,178,25,0.18); border-color:var(--warn); color:var(--warn-text);}
+  .att-btn.att-absent.active{background:rgba(208,59,59,0.14); border-color:var(--bad); color:var(--bad);}
+
+  /* ---------- Competition / Arena theme (switchable board skin) ----------
+     Turns the Board tab itself into a live ranked arena: sorted by this
+     week's score, medal badges for the top 3, and a race-track bar on every
+     card showing how close each student is to the leader. */
+  .app.theme-competition .card-grid{ gap:16px; }
+  .app.theme-competition .g-card{ padding-top:38px; display:flex; flex-direction:column; }
+  .comp-rank-badge{
+    position:absolute; top:10px; left:10px; width:32px; height:32px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:800;
+    font-size:0.92rem; color:#fff; background:var(--header-bg); box-shadow:var(--shadow-sm); z-index:2;
+  }
+  .comp-rank-badge.top1{ background:linear-gradient(135deg,#ffd77a,#c9973f); color:#241705; box-shadow:0 0 0 3px rgba(201,151,63,0.35), var(--shadow-md); font-size:1.05rem; }
+  .comp-rank-badge.top2{ background:linear-gradient(135deg,#eef0f6,#a7adc0); color:#14161f; font-size:1.05rem; }
+  .comp-rank-badge.top3{ background:linear-gradient(135deg,#e7b98c,#ab6f42); color:#241705; font-size:1.05rem; }
+  .comp-top{display:flex; flex-direction:column; align-items:center; text-align:center; gap:3px; padding:0 4px;}
+  .comp-name{font-weight:700; font-size:0.94rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+  .comp-score{font-family:var(--font-display); font-size:2.2rem; font-weight:800; line-height:1.05;}
+  .comp-gap{font-size:0.72rem; color:var(--muted); font-weight:600;}
+  .comp-gap.leading{color:var(--gold-text);}
+  .track-wrap{width:100%; height:9px; border-radius:999px; background:var(--surface-3); overflow:hidden; margin-top:10px; box-shadow:inset 0 1px 2px rgba(20,22,31,0.12);}
+  .track-fill{height:100%; border-radius:999px; background:linear-gradient(90deg,#e0722a,#c9973f); transition:width .35s ease;}
+  .track-fill.top1{background:linear-gradient(90deg,#f0cd7e,#c9973f);}
+  .track-fill.top2{background:linear-gradient(90deg,#c7ccd9,#8b91a3);}
+  .track-fill.top3{background:linear-gradient(90deg,#e7b98c,#ab6f42);}
+
+  /* ---------- modal ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,11,16,0.55); backdrop-filter:blur(2px);
+    display:none; align-items:center; justify-content:center; z-index:100; padding:16px;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--surface); border-radius:20px; border:1px solid var(--line);
+    box-shadow:var(--shadow-md); width:min(440px, 100%); max-height:90vh; overflow:auto;
+    padding:22px;
+  }
+  .modal-head{display:flex; align-items:flex-start; gap:12px; margin-bottom:14px;}
+  .modal-head .avatar{width:52px; height:56px; font-size:1.05rem;}
+  .modal-head h3{font-size:1.2rem;}
+  .modal-head .m-sub{font-size:0.82rem; color:var(--ink-2); margin-top:2px;}
+  .modal-close{margin-left:auto; background:none; border:none; color:var(--muted); cursor:pointer; padding:4px;}
+  .recap{display:flex; gap:18px; padding:12px 14px; background:var(--surface-2); border-radius:12px; margin-bottom:16px;}
+  .recap .item .v{font-family:var(--font-display); font-size:1.3rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .recap .item .l{font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em;}
+  .rule-list{display:flex; flex-direction:column; gap:8px;}
+  .rule-btn{
+    display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    border:1px solid var(--line); background:var(--surface); border-radius:12px; padding:11px 13px;
+    cursor:pointer; font-size:0.9rem; color:var(--ink); transition:background .12s ease, border-color .12s ease;
+  }
+  .rule-btn:hover{background:var(--surface-2); border-color:var(--gold);}
+  .rule-btn .dot{width:10px; height:10px; border-radius:50%; flex:none;}
+  .rule-btn .lbl{flex:1;}
+  .rule-btn .pts{font-weight:700; font-variant-numeric:tabular-nums; font-size:0.86rem;}
+  .undo-row{margin-top:14px; display:flex;}
+  .ghost-btn{
+    background:none; border:1px dashed var(--line); color:var(--ink-2); border-radius:10px;
+    padding:9px 14px; font-size:0.84rem; cursor:pointer; width:100%;
+  }
+  .ghost-btn:disabled{opacity:0.45; cursor:not-allowed;}
+  .ghost-btn:not(:disabled):hover{border-color:var(--bad); color:var(--bad);}
+  .flash-msg{
+    text-align:center; font-size:0.86rem; font-weight:600; padding:9px; border-radius:10px; margin-bottom:12px;
+  }
+
+  /* ---------- leaderboard ---------- */
+  .stat-tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:12px; margin-bottom:20px;}
+  .stat-tile{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:var(--shadow-sm);}
+  .stat-tile .v{font-family:var(--font-display); font-size:1.8rem; font-weight:700; font-variant-numeric:tabular-nums;}
+  .stat-tile .l{font-size:0.78rem; color:var(--ink-2); margin-top:2px;}
+
+  .gotw{
+    display:flex; align-items:center; gap:16px; background:linear-gradient(135deg, var(--header-bg), #29365c);
+    color:var(--header-ink); border-radius:18px; padding:18px 20px; margin-bottom:20px; box-shadow:var(--shadow-md);
+  }
+  .gotw .avatar{width:58px; height:62px; font-size:1.2rem; box-shadow:inset 0 0 0 4px var(--avatar-ring, var(--gold));}
+  .gotw .g-title{font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--gold-strong); font-weight:700;}
+  .gotw .g-name{font-family:var(--font-display); font-size:1.3rem; font-weight:700; margin-top:2px;}
+  .gotw .g-score{margin-left:auto; text-align:right;}
+  .gotw .g-score .v{font-family:var(--font-display); font-size:2.2rem; font-weight:700;}
+
+  .lb-table{width:100%; border-collapse:collapse; background:var(--surface); border-radius:14px; overflow:hidden; box-shadow:var(--shadow-sm);}
+  .lb-table th{
+    text-align:left; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);
+    padding:10px 14px; border-bottom:1px solid var(--line); background:var(--surface-2);
+  }
+  .lb-table td{padding:10px 14px; border-bottom:1px solid var(--line); font-size:0.9rem; vertical-align:middle;}
+  .lb-table tr:last-child td{border-bottom:none;}
+  .rank-num{font-family:var(--font-display); font-weight:700; color:var(--ink-2); width:28px; display:inline-block;}
+  .lb-name{display:flex; align-items:center; gap:10px;}
+  .lb-name .avatar{width:32px; height:35px; font-size:0.72rem;}
+  .trend{font-size:0.8rem; font-variant-numeric:tabular-nums;}
+
+  /* ---------- history ---------- */
+  .hist-controls{display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap;}
+  select, input[type="text"], input[type="number"], input[type="date"]{
+    font-family:inherit; font-size:0.88rem; padding:8px 10px; border-radius:9px; border:1px solid var(--line);
+    background:var(--surface); color:var(--ink);
+  }
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:20px; box-shadow:var(--shadow-sm);}
+  .panel h3{font-size:1.02rem; margin-bottom:12px;}
+  .chart-wrap{position:relative;}
+  .tooltip{
+    position:absolute; pointer-events:none; background:var(--ink); color:var(--bg); font-size:0.76rem;
+    padding:6px 9px; border-radius:8px; transform:translate(-50%,-115%); white-space:nowrap; opacity:0; transition:opacity .1s;
+    font-variant-numeric:tabular-nums;
+  }
+  .table-scroll{overflow-x:auto; border-radius:12px; border:1px solid var(--line);}
+  table.grid-table{border-collapse:collapse; width:100%; min-width:600px;}
+  table.grid-table th, table.grid-table td{
+    padding:7px 10px; font-size:0.82rem; border-bottom:1px solid var(--line); text-align:center;
+    font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  table.grid-table th{background:var(--surface-2); color:var(--ink-2); font-weight:600; position:sticky; top:0;}
+  table.grid-table td:first-child, table.grid-table th:first-child{
+    text-align:left; position:sticky; left:0; background:var(--surface); z-index:2; min-width:150px;
+  }
+  table.grid-table th:first-child{background:var(--surface-2); z-index:3;}
+  .band-good{color:var(--good); font-weight:700;}
+  .band-warn{color:var(--warn-text); font-weight:700;}
+  .band-bad{color:var(--bad); font-weight:700;}
+  .export-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+  .btn{
+    border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:10px;
+    padding:9px 15px; font-size:0.85rem; cursor:pointer; font-weight:600;
+  }
+  .btn:hover{border-color:var(--gold);}
+  .btn.primary{background:var(--gold); border-color:var(--gold); color:#241705;}
+  .btn.primary:hover{filter:brightness(1.05);}
+
+  /* ---------- settings ---------- */
+  .settings-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:16px;}
+  .field-row{display:flex; flex-direction:column; gap:5px; margin-bottom:12px;}
+  .field-row label{font-size:0.78rem; color:var(--ink-2); font-weight:600;}
+  .rule-edit-row{display:grid; grid-template-columns:1fr 90px 110px 34px; gap:8px; margin-bottom:8px; align-items:center;}
+  .rule-edit-row input[type="text"], .rule-edit-row input[type="number"], .rule-edit-row select{width:100%;}
+  .icon-x{background:none; border:none; color:var(--muted); cursor:pointer; font-size:1rem;}
+  .icon-x:hover{color:var(--bad);}
+  .corr-row{display:grid; grid-template-columns:1fr 80px 90px; gap:8px; align-items:center; margin-bottom:6px; font-size:0.85rem;}
+
+  .toggle{display:inline-flex; align-items:center; gap:8px; cursor:pointer; font-size:0.86rem;}
+  .toggle input{width:38px; height:22px; appearance:none; background:var(--surface-3); border-radius:999px; position:relative; cursor:pointer; border:1px solid var(--line);}
+  .toggle input:checked{background:var(--gold);}
+  .toggle input::before{content:"";position:absolute; width:16px; height:16px; border-radius:50%; background:#fff; top:2px; left:2px; transition:left .15s;}
+  .toggle input:checked::before{left:18px;}
+
+  footer.note{color:var(--muted); font-size:0.78rem; margin-top:26px; text-align:center;}
+
+  /* ---------- confetti canvas ---------- */
+  #confetti-canvas{position:fixed; inset:0; pointer-events:none; z-index:200;}
+
+  @media (prefers-reduced-motion: reduce){
+    .g-card{transition:none;}
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+  }
+
+  @media (max-width:480px){
+    .topbar{gap:10px;}
+    .class-select{order:2;}
+    .tabs{order:3; width:100%; justify-content:center;}
+    .gotw{flex-wrap:wrap;}
+    .gotw .g-score{margin-left:0; text-align:left;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+<div class="lvlup-toast" id="lvlup-toast"></div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 24 26" fill="none"><path d="M12 0 L23 4.5 L23 13 C23 20 18 24.5 12 26 C6 24.5 1 20 1 13 L1 4.5 Z"/></svg>
+      </span>
+      <div class="brand-text">
+        <span class="name">Guardian Board</span>
+        <span class="sub" id="class-name-label">Class 8C</span>
+      </div>
+    </div>
+    <select class="class-select" id="class-select" aria-label="Choose class"></select>
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" data-view="board">Board</button>
+      <button class="tab-btn" data-view="leaderboard">Leaderboard</button>
+      <button class="tab-btn" data-view="history">History</button>
+      <button class="tab-btn" data-view="settings">Settings</button>
+    </div>
+    <div class="top-right">
+      <span class="week-chip" id="week-chip">Week of —</span>
+      <button class="icon-btn" id="theme-btn" title="Switch board style" aria-label="Switch between Guardian and Level-Up display styles">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12l4 6-10 12L2 9Z"/><path d="M2 9h20"/><path d="M12 3 8 9l4 12 4-12Z"/></svg>
+      </button>
+      <button class="icon-btn" id="mute-btn" title="Mute / unmute sound" aria-label="Mute or unmute sound"></button>
+    </div>
+  </div>
+
+  <div id="demo-banner-slot"></div>
+
+  <section class="view active" id="view-board">
+    <div class="board-head">
+      <div>
+        <h2 id="board-title">This week's guardians</h2>
+        <p id="board-subtitle">Tap a student to award a shield or log something — everyone starts each week at 100.</p>
+        <p id="att-summary" class="att-summary"></p>
+      </div>
+    </div>
+    <div class="card-grid" id="board-grid"></div>
+  </section>
+
+  <section class="view" id="view-leaderboard">
+    <div id="gotw-slot"></div>
+    <div class="stat-tiles" id="stat-tiles"></div>
+    <div class="table-scroll">
+      <table class="lb-table">
+        <thead><tr><th>#</th><th>Guardian</th><th>Score</th><th id="lb-col-4">Shields</th><th>Trend</th></tr></thead>
+        <tbody id="lb-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="view" id="view-history">
+    <div class="panel">
+      <div class="hist-controls">
+        <label for="student-select" style="font-size:0.85rem;color:var(--ink-2);">Guardian:</label>
+        <select id="student-select"></select>
+      </div>
+      <h3 id="chart-title">Weekly score trend</h3>
+      <div class="chart-wrap" id="chart-wrap"></div>
+    </div>
+    <div class="panel">
+      <h3>Weekly History — every week, combined</h3>
+      <div class="table-scroll"><table class="grid-table" id="weekly-table"></table></div>
+    </div>
+    <div class="panel">
+      <h3>Monthly Averages</h3>
+      <div class="table-scroll"><table class="grid-table" id="monthly-table"></table></div>
+      <div class="export-row">
+        <button class="btn" id="export-weekly">Export Weekly History (CSV)</button>
+        <button class="btn" id="export-monthly">Export Monthly Averages (CSV)</button>
+        <button class="btn" id="export-attendance">Export Today's Attendance (CSV)</button>
+        <button class="btn" id="export-backup">Export Full Backup (JSON)</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-settings">
+    <div class="settings-grid">
+      <div class="panel">
+        <h3>Class</h3>
+        <div class="field-row"><label for="set-classname">Class name</label><input type="text" id="set-classname"></div>
+        <div class="field-row"><label for="set-yearstart">School year starts (Monday)</label><input type="date" id="set-yearstart"></div>
+        <div class="field-row"><label for="set-yearend">School year ends</label><input type="date" id="set-yearend"></div>
+        <button class="btn primary" id="save-meta">Save class settings</button>
+        <hr style="border:none;border-top:1px solid var(--line); margin:18px 0;">
+        <label class="toggle"><input type="checkbox" id="sound-default-toggle"> Sound on by default when the board opens</label>
+        <div style="height:10px;"></div>
+        <label class="toggle"><input type="checkbox" id="projector-toggle"> Projector mode (bigger cards, this device only)</label>
+      </div>
+      <div class="panel">
+        <h3>Rules &amp; point values</h3>
+        <div id="rule-edit-list"></div>
+        <button class="btn" id="add-rule-row" style="margin-top:6px;">+ Add event type</button>
+        <div style="height:12px;"></div>
+        <button class="btn primary" id="save-rules">Save rules</button>
+      </div>
+      <div class="panel" style="grid-column:1/-1;">
+        <h3>Corrections — manually adjust shields</h3>
+        <p style="font-size:0.82rem;color:var(--ink-2); margin-top:-6px;">Use this only for fixing a mistake — everyday awarding and deductions happen on the Board tab.</p>
+        <div id="correction-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note">Guardian Board — conduct &amp; participation tracker · scores reset automatically every Monday</footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal-body"></div>
+</div>
+
+<!-- Firebase (Firestore) — this is what makes the board live and shared across every
+     device, no accounts needed for anyone viewing or using it. The config below is
+     a public identifier, not a secret; access is controlled by your Firestore Rules,
+     not by hiding this. -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+  var firebaseConfig = {
+    apiKey: "AIzaSyC45N7_b_GkSe_pDo074lcvMlHpeIBgnlI",
+    authDomain: "guardian-board-a7df9.firebaseapp.com",
+    projectId: "guardian-board-a7df9",
+    storageBucket: "guardian-board-a7df9.firebasestorage.app",
+    messagingSenderId: "676806226306",
+    appId: "1:676806226306:web:f39653eff4d2cd915c1f9b",
+    measurementId: "G-1VRH0FT05V"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var firestoreDb = firebase.firestore();
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ================= classes, rosters & defaults =================
+     Every class the board supports lives in this one registry. Each entry
+     has its own roster, its own starting rule set and its own meta (class
+     name / school-year bounds) — and, live, its own Firestore path
+     (classes/{id}/students, classes/{id}/config/...), so switching the
+     class dropdown never mixes one class's scores into another's. */
+
+  // Same point values you'd already tuned on the Claude-hosted board — used
+  // as the starting rule set for every class (each class can be edited
+  // independently afterwards from its own Settings tab).
+  function defaultRuleSet(){
+    return [
+      {id:"r1hryk8", label:"Participation", points:0, category:"Reward"},
+      {id:"rqzzvfs", label:"Minor Disruption", points:-1, category:"Infraction"},
+      {id:"rfidd56", label:"Repeated / Major Disruption", points:-3, category:"Infraction"},
+      {id:"rgl6e3d", label:"Serious Disruption / Defiance", points:-10, category:"Infraction"},
+      {id:"rb9gea4", label:"Missing Homework", points:-1, category:"Infraction"},
+      {id:"rkb6gq7", label:"Missing Classwork", points:-1, category:"Infraction"},
+      {id:"rlate01", label:"Late to Class", points:-1, category:"Infraction"},
+      {id:"rabsnt1", label:"Absence (Unexcused)", points:-3, category:"Infraction"}
+    ];
+  }
+  function defaultMeta(className){
+    return { className: className, yearStart: "2026-08-31", yearEnd: "2027-06-30", soundDefault: true };
+  }
+
+  var CLASS_ORDER = ["8C", "8A", "8B", "10A", "10B"];
+
+  var CLASSES = {
+    "8C": {
+      label: "Class 8C",
+      // This class ran as the original single-class board before multi-class
+      // support existed, so its live data currently sits at the OLD flat
+      // Firestore paths (students/, config/rules, config/meta). legacyFlat
+      // tells the store to migrate that data into classes/8C/... the first
+      // time it loads here, instead of starting it over from this roster.
+      legacyFlat: true,
+      roster: [
+        {id:"1", name:"Abdulhadi Hamad Abdulhadi Almarri"},
+        {id:"2", name:"Ahmed Mohamed Salem Ali AlHameli"},
+        {id:"3", name:"Ahmed Obaid Ateeq Mohamed AlHameli"},
+        {id:"4", name:"Bakheet Mohamed Salem Alameri"},
+        {id:"5", name:"Faris Ghanem Fares Almazrouei"},
+        {id:"6", name:"Hamad Ali Mohamed Khaleefa Almansoori"},
+        {id:"7", name:"Hamad Saif Salem Alhameli"},
+        {id:"8", name:"Hamdan Mohamed Husain Hasan Alhosani"},
+        {id:"9", name:"Hamdan Saeed Hamad Azzan Almazrouei"},
+        {id:"10", name:"Khalfan Hadif Khalfan Almansoori"},
+        {id:"11", name:"Khalifa Rakan Mohamed Ali Almarar"},
+        {id:"12", name:"Mohamed Bakheet Thuayleb Alameri"},
+        {id:"13", name:"Mohamed Khalfan Mohamed Alhammadi"},
+        {id:"14", name:"Mohamed Khamis Rashed Mahosh AlMazrouei"},
+        {id:"15", name:"Mohamed Saleh Mohamed Salem Al Ameri"},
+        {id:"16", name:"Mohamed Salem Mohamed Alameri"},
+        {id:"17", name:"Mohamed Suhail Thuailb Suqer Alameri"},
+        {id:"18", name:"Mubarak Salem Mubarak Salem Almansoori"},
+        {id:"19", name:"Saeed Ahmed Mohamed Bakheet Almansoori"},
+        {id:"20", name:"Yousif Alkendi Ahmed Alhammadi"},
+        {id:"21", name:"ZAYAD KHAMIS MOHAMED SAIF ALMARAR"},
+        {id:"22", name:"Zayed Ateeq Mohamed Rashid AlMazrouei"},
+        {id:"23", name:"Zayed Khalaf Mohsin Rashed Al Mazrouei"}
+      ],
+      defaultRules: defaultRuleSet(),
+      defaultMeta: defaultMeta("Class 8C")
+    },
+    "8A": {
+      label: "Class 8A",
+      roster: [
+        {id:"1", name:"Abubakr Fathelrahman Mohammed Ali"},
+        {id:"2", name:"Adam Mohammad Mahmoud Abumuslem"},
+        {id:"3", name:"Faisal Ahmed Taheri"},
+        {id:"4", name:"Ghaith Saeed Khalfan"},
+        {id:"5", name:"Hamdan Theeban Hamad Humaid Almansoori"},
+        {id:"6", name:"Maktoum Ali Barrak Khalaf Almazrouei"},
+        {id:"7", name:"Mansour Ahmed Hamad Mohamed Al Mazrouei"},
+        {id:"8", name:"Matar Mohamed Matar Taresh Almansoori"},
+        {id:"9", name:"Mohamed Khaled Zaid Afsan"},
+        {id:"10", name:"Mohamed Obaid Mohamed"},
+        {id:"11", name:"Mohammed Saqer Salem Almansoori"},
+        {id:"12", name:"Mohammed Shaukat Salim Rababah"},
+        {id:"13", name:"Rashed Abdullah Saeed Almarri"},
+        {id:"14", name:"Saeed Ghanem Mubarak Almazrouei"},
+        {id:"15", name:"Salem Khalil Ibrahim Salem Alhammadi"},
+        {id:"16", name:"Sultan Mohamed Mohamed"},
+        {id:"17", name:"Yusuf Hazem Muahmmad Almasarei"},
+        {id:"18", name:"Zayed Theyab Zayed"}
+      ],
+      defaultRules: defaultRuleSet(),
+      defaultMeta: defaultMeta("Class 8A")
+    },
+    "8B": {
+      label: "Class 8B",
+      roster: [
+        {id:"1", name:"Abdulla Almarar"},
+        {id:"2", name:"Eissa Khamis Eissa Almazrouei"},
+        {id:"3", name:"Faris Alsadig Albasheer Mohammed"},
+        {id:"4", name:"Ghanem Saeed Salham Almazrouei"},
+        {id:"5", name:"Hamad Obaid Naser Shalaan Almazrouei"},
+        {id:"6", name:"Hamad Saeed Humaid Mubarak AlMansoori"},
+        {id:"7", name:"Hamdan Ahmed Muaala"},
+        {id:"8", name:"Hamdan Salem Mohamed Salem Alameri"},
+        {id:"9", name:"Hilal Mohamed Rashed AlQubaisi"},
+        {id:"10", name:"Mohamed Abdulla Mohamed Slayem Alefari"},
+        {id:"11", name:"Mohamed Abdulla Obaid Alameri"},
+        {id:"12", name:"Mohamed Abdulla Khalfan Mohamed Almazrouei"},
+        {id:"13", name:"Mohamed Faris Eissa Faris AlMazrouei"},
+        {id:"14", name:"Mohamed Khalfan Awadh Mohamed Almazrouei"},
+        {id:"15", name:"Mohamed Salem Mubarak Alameri"},
+        {id:"16", name:"Mohammed Hamed Khadem Almansoori"},
+        {id:"17", name:"Omar Barrak Hamad Almazrouei"},
+        {id:"18", name:"Omar Mohamed Rashed Saeed Almazrouei"},
+        {id:"19", name:"Saif Ahmed Khalfan Obaid Almazrouei"},
+        {id:"20", name:"Saleh Mohammed Saleh Almazrouei"},
+        {id:"21", name:"Suheel Mubarak Asheer Ali Al Mazrouei"},
+        {id:"22", name:"Zayed Mohamed Sageer Mohamed Almansoori"}
+      ],
+      defaultRules: defaultRuleSet(),
+      defaultMeta: defaultMeta("Class 8B")
+    },
+    "10A": {
+      label: "Class 10A",
+      roster: [
+        {id:"1", name:"Aamer Matar Khamees Saeed Al Meraikhi"},
+        {id:"2", name:"Abdulla Mohamed Al Falahi"},
+        {id:"3", name:"Adam Youssef Reda Youssef"},
+        {id:"4", name:"Akas Althamiz Ahnaf"},
+        {id:"5", name:"Elias Suheil Elias Tartara"},
+        {id:"6", name:"Hadi Ahmad Saadi"},
+        {id:"7", name:"Hamzah Sultan Jabr"},
+        {id:"8", name:"Khalfan Abdulla Khalfan Sooyah Almazrouei"},
+        {id:"9", name:"Khalifa Salham Almazrouei"},
+        {id:"10", name:"Marc Hero M.Valmoria"},
+        {id:"11", name:"Mohamed Ahmed Mohamed Bakheet Almansoori"},
+        {id:"12", name:"Mohamed Alnoobi Alsamgha Al Ameri"},
+        {id:"13", name:"Mohamed Hamdan Al Mazrouei"},
+        {id:"14", name:"Mohamed Saeed Al Mazrouei"},
+        {id:"15", name:"Mubarak Salem Mohamed Salmen Al Mazrouei"},
+        {id:"16", name:"Musallam Ibrahim Al Atibi"},
+        {id:"17", name:"Sabah Ali Hashim Alremeithi"},
+        {id:"18", name:"Saeed Hamdan Al Mazrouei"},
+        {id:"19", name:"Saeed Jumaa Hamad Almazrouei"},
+        {id:"20", name:"Saeed Mohamed Ahmed Mohamed Al Mansoori"},
+        {id:"21", name:"Saif Mohamed Awadh Almazrouei"},
+        {id:"22", name:"Salman Suhail Ali Salman Al Mazrouei"},
+        {id:"23", name:"Sanad Ali Sanad Alkarbi"},
+        {id:"24", name:"Saoud Muhanna Khamis Alhassani"},
+        {id:"25", name:"Sayah Khalfan Sayah Eissa Al Mansoori"},
+        {id:"26", name:"Suhail Sultan Mohamed Al Mazrouei"},
+        {id:"27", name:"Sultan Abdulla Ahmed Al Hammadi"},
+        {id:"28", name:"Sultan Sayah Al Mansoori"},
+        {id:"29", name:"Sultan Sudad Abdulrahman"},
+        {id:"30", name:"Yosef Fawaz Jasim Al Jigafi"}
+      ],
+      defaultRules: defaultRuleSet(),
+      defaultMeta: defaultMeta("Class 10A")
+    },
+    "10B": {
+      label: "Class 10B",
+      roster: [
+        {id:"1", name:"Abdulla Mohamed Abdulla Alhammadi"},
+        {id:"2", name:"Abdulla Saeed Mohamed Al Mazrouei"},
+        {id:"3", name:"Abdulla Zayed Mohamed Obaid Al Mahirbi"},
+        {id:"4", name:"Ahmed Hamad Mohamed Almazrouei"},
+        {id:"5", name:"Ahmed Mohamed Eidha Al Mazrouei"},
+        {id:"6", name:"Ahmed Salem Saeed Almansoori"},
+        {id:"7", name:"Ali Mohamed Ali Mousabh Al Marar"},
+        {id:"8", name:"Bader Abdullah Ali Alhameli"},
+        {id:"9", name:"Fares Mohamed Salem Hamdan Al Mansoori"},
+        {id:"10", name:"Hamad Mohamed Salem Alameri"},
+        {id:"11", name:"Khaled Mohamed Khalfan Al Hamily"},
+        {id:"12", name:"Khalfan Bakheet Khalfan Al Mazrouei"},
+        {id:"13", name:"Khalifa Eisa Saeed Almeqbaali"},
+        {id:"14", name:"Mayed Jasem Al Mazrouei"},
+        {id:"15", name:"Mohamed Ali Mohamed Ali Almarar"},
+        {id:"16", name:"Mohamed Hamad Mohamed Hamad Alameri"},
+        {id:"17", name:"Mohamed Naser Musalam Almazrouei"},
+        {id:"18", name:"Mohamed Rakan Mohamed Al Marar"},
+        {id:"19", name:"Mubarak Nawaf Al Mansoori"},
+        {id:"20", name:"Mufleh Abdullah Saeed Almarri"},
+        {id:"21", name:"Naser Hamed Mohamed Ali Al Kourbi"},
+        {id:"22", name:"Saif Ahmed Salem S. Al Mazrouei"},
+        {id:"23", name:"Saif Ghanem Khalfan Almazrouei"},
+        {id:"24", name:"Saif Mubarak Rashed Rashed Al Mansoori"},
+        {id:"25", name:"Saif Saeed Mohamed Salmeen Almazrouei"},
+        {id:"26", name:"Saif Thamer Mohamad Almansoori"},
+        {id:"27", name:"Suhail Mohamed Suhail Almazrouei"},
+        {id:"28", name:"Sultan Hamad Khamis Salem Almansoori"},
+        {id:"29", name:"Theyab Saif Saif Knaish Al Hameli"},
+        {id:"30", name:"Zayed Mohamed Mohamed Al Mansoori"}
+      ],
+      defaultRules: defaultRuleSet(),
+      defaultMeta: defaultMeta("Class 10B")
+    }
+  };
+
+  function currentRoster(){ return CLASSES[Store.classId].roster; }
+
+  function emptyStudentDoc(name){
+    // attendance is a separate roll-call log — keyed by ISO date, one of
+    // "present"/"late"/"absent" — and never touches shields, events or score.
+    return { name: name, shields:0, weeklyDeltas:{}, totals:{shieldsEarned:0, shieldsUsed:0, incidents:0}, events:[], attendance:{} };
+  }
+
+  /* ================= date helpers ================= */
+  function pad2(n){ return (n<10?"0":"")+n; }
+  function isoDate(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+  function parseISO(s){ var p=s.split("-").map(Number); return new Date(p[0], p[1]-1, p[2]); }
+  function mondayOf(d){
+    var day=(d.getDay()+6)%7; var m=new Date(d.getFullYear(), d.getMonth(), d.getDate()-day);
+    m.setHours(0,0,0,0); return m;
+  }
+  function addDays(d,n){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()+n); }
+  function fmtShort(d){ return d.toLocaleDateString(undefined,{month:"short", day:"numeric"}); }
+  function fmtMonthYear(d){ return d.toLocaleDateString(undefined,{month:"long", year:"numeric"}); }
+  function today(){ var t=new Date(); t.setHours(0,0,0,0); return t; }
+
+  function weekList(meta){
+    var start = mondayOf(parseISO(meta.yearStart));
+    var end = parseISO(meta.yearEnd);
+    var out=[]; var d=start;
+    var guard=0;
+    while(d<=end && guard<120){ out.push(new Date(d)); d=addDays(d,7); guard++; }
+    return out;
+  }
+
+  function initials(name){
+    var parts=name.trim().split(/\s+/);
+    var a=parts[0]?parts[0][0]:"";
+    var b=parts.length>1?parts[1][0]:"";
+    return (a+b).toUpperCase();
+  }
+  function firstName(name){ return name.trim().split(/\s+/)[0]; }
+  function restName(name){ var p=name.trim().split(/\s+/); return p.slice(1).join(" "); }
+
+  function band(score){
+    if(score>=90) return "good";
+    if(score>=75) return "warn";
+    return "bad";
+  }
+  var BAND_COLOR = { good:"var(--good)", warn:"var(--warn)", bad:"var(--bad)" };
+  var BAND_TEXTCLASS = { good:"band-good", warn:"band-warn", bad:"band-bad" };
+
+  /* ================= Level-Up theme: levels & ranks =================
+     Driven entirely by totals.shieldsEarned — the count of shields a
+     student has EVER earned for participation. Unlike the weekly score,
+     this never resets, so it's the number that keeps climbing all year:
+     the whole point of this theme is a progress bar that only ever goes up. */
+  var SHIELDS_PER_LEVEL = 5;
+  var RANKS = [
+    {min:1,  name:"Rookie",     color:"#7b8794", grad:"linear-gradient(135deg,#8b96a6,#5c6577)"},
+    {min:3,  name:"Adventurer", color:"#2a78d6", grad:"linear-gradient(135deg,#4f96e8,#1d5bab)"},
+    {min:6,  name:"Hero",       color:"#7c4fd6", grad:"linear-gradient(135deg,#9a72e6,#5c34ad)"},
+    {min:9,  name:"Champion",   color:"#e0722a", grad:"linear-gradient(135deg,#f08f4f,#b8541a)"},
+    {min:12, name:"Legend",     color:"#c9973f", grad:"linear-gradient(135deg,#f0cd7e,#a8722c)"}
+  ];
+  function rankForLevel(level){
+    var r = RANKS[0];
+    for(var i=0;i<RANKS.length;i++){ if(level>=RANKS[i].min) r = RANKS[i]; }
+    return r;
+  }
+  function levelInfo(student){
+    var earned = (student.totals && student.totals.shieldsEarned) || 0;
+    var level = Math.floor(earned/SHIELDS_PER_LEVEL) + 1;
+    var progress = earned % SHIELDS_PER_LEVEL;
+    return { level:level, progress:progress, need:SHIELDS_PER_LEVEL, rank:rankForLevel(level), earned:earned };
+  }
+
+  function weekScore(student, wkKey){
+    var delta = (student.weeklyDeltas && student.weeklyDeltas[wkKey]) || 0;
+    return 100 + delta;
+  }
+
+  /* ================= store (live, shared — backed by Firestore) =================
+     Every viewer of this page — you, colleagues, students, on any device, no
+     account needed — reads and writes the same shared data in real time via the
+     Firestore database set up for this project. localStorage is not used for
+     board data at all; the only thing kept in this browser is small per-device
+     preferences (sound mute, projector mode). */
+  var Store = {
+    classId: null,
+    ready:false, online:false,
+    students:{}, rules:[], meta:{},
+    listeners:[],
+    _unsubs: [],
+    _seededFlags: {},
+
+    // Switches the whole board to a different class: drops the old class's
+    // live listeners, clears in-memory data, and subscribes fresh to that
+    // class's own Firestore path. Every class is fully separate live data —
+    // switching never touches another class's scores.
+    setClass(classId){
+      var info = CLASSES[classId];
+      if(!info) return;
+      this.classId = classId;
+      this.ready = false; this.online = false;
+      this.students = {}; this.rules = info.defaultRules.slice(); this.meta = Object.assign({}, info.defaultMeta);
+      this._unsubs.forEach(function(u){ try{ u(); }catch(e){} });
+      this._unsubs = [];
+
+      info.roster.forEach(function(r){ Store.students[r.id] = emptyStudentDoc(r.name); });
+
+      if(!window.firestoreDb){
+        console.warn("Firestore did not load — check your internet connection and the firebaseConfig block.");
+        this.ready = true;
+        this._emit();
+        return;
+      }
+      var db = window.firestoreDb;
+      var classRef = db.collection("classes").doc(classId);
+
+      var unsubStudents = classRef.collection("students").onSnapshot(function(snap){
+        if(Store.classId !== classId) return; // a stale callback from a class we've since switched away from
+        Store.online = true;
+        snap.forEach(function(doc){
+          var d = doc.data();
+          if(d) Store.students[doc.id] = Object.assign(emptyStudentDoc(d.name||""), d);
+        });
+        Store.ready = true;
+        Store._maybeSeed(db, classId, snap.size);
+        Store._emit();
+      }, function(err){
+        if(Store.classId !== classId) return;
+        console.warn("Firestore students subscription failed", err);
+        Store.online = false; Store.ready = true; Store._emit();
+      });
+
+      var unsubRules = classRef.collection("config").doc("rules").onSnapshot(function(doc){
+        if(Store.classId !== classId) return;
+        if(doc.exists && doc.data() && Array.isArray(doc.data().eventTypes) && doc.data().eventTypes.length){
+          Store.rules = doc.data().eventTypes;
+        }
+        Store._emit();
+      });
+
+      var unsubMeta = classRef.collection("config").doc("meta").onSnapshot(function(doc){
+        if(Store.classId !== classId) return;
+        if(doc.exists && doc.data()){ Store.meta = Object.assign({}, info.defaultMeta, doc.data()); }
+        Store._emit();
+      });
+
+      this._unsubs.push(unsubStudents, unsubRules, unsubMeta);
+    },
+
+    // One-time bootstrap per class: if that class's students subcollection is
+    // completely empty, write its roster + default rules + meta once so the
+    // board has something to show. Never runs again once any student doc exists.
+    // Class 8C is special: it's the class that already had live data at the
+    // OLD flat paths (students/, config/rules, config/meta) before multi-class
+    // support existed, so for 8C we check there FIRST and copy that data
+    // across rather than reseeding blank — this is what keeps every shield,
+    // score and rule tweak you'd already made.
+    _maybeSeed(db, classId, currentSize){
+      if(this._seededFlags[classId] || currentSize>0) return;
+      this._seededFlags[classId] = true;
+      var info = CLASSES[classId];
+      var classRef = db.collection("classes").doc(classId);
+
+      function freshSeed(){
+        var batch = db.batch();
+        info.roster.forEach(function(r){
+          batch.set(classRef.collection("students").doc(r.id), emptyStudentDoc(r.name));
+        });
+        batch.set(classRef.collection("config").doc("rules"), {eventTypes: info.defaultRules});
+        batch.set(classRef.collection("config").doc("meta"), info.defaultMeta);
+        batch.commit().catch(function(e){ console.warn("initial seed failed for "+classId, e); Store._seededFlags[classId]=false; });
+      }
+
+      if(!info.legacyFlat){ freshSeed(); return; }
+
+      db.collection("students").get().then(function(legacySnap){
+        if(legacySnap.size===0){ freshSeed(); return; }
+        var batch = db.batch();
+        legacySnap.forEach(function(doc){
+          var d = doc.data();
+          if(d) batch.set(classRef.collection("students").doc(doc.id), d);
+        });
+        Promise.all([
+          db.collection("config").doc("rules").get(),
+          db.collection("config").doc("meta").get()
+        ]).then(function(res){
+          var rulesDoc = res[0], metaDoc = res[1];
+          batch.set(classRef.collection("config").doc("rules"),
+            (rulesDoc.exists && rulesDoc.data()) ? rulesDoc.data() : {eventTypes: info.defaultRules});
+          batch.set(classRef.collection("config").doc("meta"),
+            (metaDoc.exists && metaDoc.data()) ? metaDoc.data() : info.defaultMeta);
+          batch.commit().catch(function(e){ console.warn("8C migration failed", e); Store._seededFlags[classId]=false; });
+        }).catch(function(e){ console.warn("8C migration (config read) failed", e); Store._seededFlags[classId]=false; });
+      }).catch(function(e){ console.warn("legacy 8C check failed", e); Store._seededFlags[classId]=false; freshSeed(); });
+    },
+
+    onChange(fn){ this.listeners.push(fn); },
+    _emit(){ this.listeners.forEach(function(fn){ fn(); }); },
+
+    saveStudent(id, doc){
+      this.students[id] = doc; // optimistic local update, Firestore confirms via onSnapshot
+      this._emit();
+      if(window.firestoreDb && this.classId){
+        window.firestoreDb.collection("classes").doc(this.classId).collection("students").doc(id).set(doc)
+          .catch(function(e){ console.warn("save failed", e); });
+      }
+    },
+    saveRules(rules){
+      this.rules = rules;
+      this._emit();
+      if(window.firestoreDb && this.classId){
+        window.firestoreDb.collection("classes").doc(this.classId).collection("config").doc("rules").set({eventTypes:rules})
+          .catch(function(e){ console.warn("save failed", e); });
+      }
+    },
+    saveMeta(meta){
+      this.meta = Object.assign({}, this.meta, meta);
+      this._emit();
+      if(window.firestoreDb && this.classId){
+        window.firestoreDb.collection("classes").doc(this.classId).collection("config").doc("meta").set(this.meta)
+          .catch(function(e){ console.warn("save failed", e); });
+      }
+    }
+  };
+
+  /* ================= event application ================= */
+  function applyEvent(student, rule){
+    var wk = isoDate(mondayOf(today()));
+    var doc = JSON.parse(JSON.stringify(student));
+    var isReward = rule.category === "Reward";
+    var shieldsBefore = doc.shields||0;
+    var shielded=false, delta=0, kind;
+
+    if(isReward){
+      doc.shields = shieldsBefore + 1;
+      doc.totals.shieldsEarned++;
+      kind = "reward";
+    } else if(rule.points < 0 && shieldsBefore>0){
+      shielded = true;
+      doc.shields = shieldsBefore - 1;
+      doc.totals.incidents++;
+      doc.totals.shieldsUsed++;
+      kind = "shielded";
+    } else {
+      delta = rule.points;
+      doc.weeklyDeltas[wk] = (doc.weeklyDeltas[wk]||0) + delta;
+      doc.totals.incidents++;
+      kind = "deduction";
+    }
+    doc.events.push({ts:new Date().toISOString(), type:rule.label, delta:delta, shielded:shielded, weekStart:wk, kind:kind});
+    if(doc.events.length>100) doc.events = doc.events.slice(doc.events.length-100);
+    return {doc:doc, shielded:shielded, isReward:isReward, delta:delta};
+  }
+
+  function undoLast(student){
+    var doc = JSON.parse(JSON.stringify(student));
+    if(!doc.events.length) return doc;
+    var ev = doc.events.pop();
+    if(ev.kind==="reward"){
+      doc.shields = Math.max(0,(doc.shields||0)-1);
+      doc.totals.shieldsEarned = Math.max(0,doc.totals.shieldsEarned-1);
+    } else if(ev.kind==="shielded"){
+      doc.shields = (doc.shields||0)+1;
+      doc.totals.incidents = Math.max(0,doc.totals.incidents-1);
+      doc.totals.shieldsUsed = Math.max(0,doc.totals.shieldsUsed-1);
+    } else {
+      doc.weeklyDeltas[ev.weekStart] = (doc.weeklyDeltas[ev.weekStart]||0) - ev.delta;
+      doc.totals.incidents = Math.max(0,doc.totals.incidents-1);
+    }
+    return doc;
+  }
+
+  /* ================= sound ================= */
+  var muted = false;
+  var hasStoredMute = false; // true once this device has its own explicit mute preference
+  var AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+  var actx = null;
+  function getCtx(){ if(!AudioCtxClass) return null; if(!actx) actx = new AudioCtxClass(); if(actx.state==="suspended") actx.resume(); return actx; }
+  function tone(freq, start, dur, type, gain){
+    var c = getCtx(); if(!c) return;
+    var o=c.createOscillator(), g=c.createGain();
+    o.type=type||"sine"; o.frequency.value=freq;
+    var t0=c.currentTime+start;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(gain||0.16, t0+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+    o.connect(g).connect(c.destination);
+    o.start(t0); o.stop(t0+dur+0.05);
+  }
+  function playChime(){ if(muted) return; tone(523.25,0,0.16,'sine',0.16); tone(659.25,0.09,0.16,'sine',0.16); tone(783.99,0.18,0.32,'sine',0.18); }
+  function playShieldBlock(){ if(muted) return; tone(392,0,0.10,'triangle',0.14); tone(587.33,0.06,0.2,'triangle',0.14); }
+  function playDeduct(){ if(muted) return; tone(196,0,0.26,'sine',0.11); }
+  function playFanfare(){ if(muted) return; [523.25,659.25,783.99,1046.5].forEach(function(f,i){ tone(f,i*0.09,0.32,'triangle',0.17); }); }
+
+  /* ================= confetti ================= */
+  var confettiCanvas = document.getElementById("confetti-canvas");
+  var cctx = confettiCanvas.getContext("2d");
+  function resizeCanvas(){ confettiCanvas.width=innerWidth; confettiCanvas.height=innerHeight; }
+  window.addEventListener("resize", resizeCanvas); resizeCanvas();
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var particles=[];
+  var CONFETTI_COLORS = ["#c9973f","#e0b465","#182544","#eef0f4","#0ca30c"];
+  function burstConfetti(x,y){
+    if(reduceMotion) return;
+    for(var i=0;i<38;i++){
+      var ang = Math.random()*Math.PI*2, speed = 2+Math.random()*4.5;
+      particles.push({
+        x:x, y:y, vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed-3,
+        life:0, maxLife:50+Math.random()*30, size:4+Math.random()*4,
+        color:CONFETTI_COLORS[i%CONFETTI_COLORS.length], rot:Math.random()*Math.PI, vr:(Math.random()-0.5)*0.4
+      });
+    }
+    requestAnimationFrame(tickConfetti);
+  }
+  function tickConfetti(){
+    cctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+    particles = particles.filter(function(p){ return p.life<p.maxLife; });
+    particles.forEach(function(p){
+      p.vy+=0.12; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life++;
+      cctx.save();
+      cctx.globalAlpha = Math.max(0, 1-p.life/p.maxLife);
+      cctx.translate(p.x,p.y); cctx.rotate(p.rot);
+      cctx.fillStyle=p.color;
+      cctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6);
+      cctx.restore();
+    });
+    if(particles.length) requestAnimationFrame(tickConfetti); else cctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+  }
+
+  /* ================= shield svg helper ================= */
+  function shieldSvg(color){
+    return '<span class="shield-icon"><svg viewBox="0 0 24 26" fill="'+color+'"><path d="M12 0 L23 4.5 L23 13 C23 20 18 24.5 12 26 C6 24.5 1 20 1 13 L1 4.5 Z"/></svg></span>';
+  }
+
+  /* ================= attendance (separate from shields/score) ================= */
+  var ATT_ICONS = {
+    present: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    late:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>',
+    absent:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+  };
+  var ATT_LABELS = { present:"present", late:"late", absent:"absent" };
+
+  function attendanceRow(s, id){
+    var todayKey = isoDate(today());
+    var cur = (s.attendance && s.attendance[todayKey]) || null;
+    return '<div class="att-row">' + ["present","late","absent"].map(function(status){
+      var active = cur===status;
+      return '<button type="button" class="att-btn att-'+status+(active?" active":"")+'" data-att="'+status+'" data-id="'+id+'" '+
+        'title="Mark '+esc(firstName(s.name))+' '+ATT_LABELS[status]+'" aria-pressed="'+(active?"true":"false")+'">'+ATT_ICONS[status]+'</button>';
+    }).join("") + '</div>';
+  }
+
+  // Tapping the same status again clears today's mark (fixes a mis-tap);
+  // tapping a different status simply overwrites it. This never touches
+  // shields, events or score — it's purely a roll-call record.
+  function markAttendance(id, status){
+    var current = Store.students[id];
+    if(!current) return;
+    var doc = JSON.parse(JSON.stringify(current));
+    if(!doc.attendance) doc.attendance = {};
+    var todayKey = isoDate(today());
+    if(doc.attendance[todayKey]===status){ delete doc.attendance[todayKey]; }
+    else { doc.attendance[todayKey] = status; }
+    Store.saveStudent(id, doc);
+    renderAll();
+  }
+
+  function renderAttendanceSummary(){
+    var el = document.getElementById("att-summary");
+    if(!el) return;
+    var todayKey = isoDate(today());
+    var counts = {present:0, late:0, absent:0};
+    currentRoster().forEach(function(r){
+      var s = Store.students[r.id]||emptyStudentDoc(r.name);
+      var st = s.attendance && s.attendance[todayKey];
+      if(st && counts.hasOwnProperty(st)) counts[st]++;
+    });
+    var marked = counts.present+counts.late+counts.absent;
+    var total = currentRoster().length;
+    el.textContent = "Attendance today: "+marked+"/"+total+" marked — "+counts.present+" present, "+counts.late+" late, "+counts.absent+" absent";
+  }
+
+  /* ================= rendering ================= */
+  var state = { view:"board", selectedId: null, muted:false, projector:false, lastRosterClassId:null, theme:"guardian" };
+  var THEME_COPY = {
+    guardian:    { name:"Guardian", title:"This week's guardians", subtitle:"Tap a student to award a shield or log something — everyone starts each week at 100." },
+    levelup:     { name:"Level-Up", title:"Level up your class", subtitle:"Tap a student to award XP or log something — every shield earned counts toward their level, forever." },
+    competition: { name:"Competition", title:"This week's arena", subtitle:"Ranked live by this week's score — tap a student to log an event. Everyone starts each week at 100." }
+  };
+
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+
+  function renderTopbar(){
+    if(!hasStoredMute) muted = !Store.meta.soundDefault;
+    document.getElementById("class-name-label").textContent = Store.meta.className || "Class";
+    var wk = mondayOf(today());
+    var end = addDays(wk,6);
+    document.getElementById("week-chip").textContent = "Week of " + fmtShort(wk) + " – " + fmtShort(end);
+    var muteBtn = document.getElementById("mute-btn");
+    muteBtn.innerHTML = muted
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18 6a9 9 0 0 1 0 12"/></svg>';
+
+    var banner = document.getElementById("demo-banner-slot");
+    banner.innerHTML = (Store.ready && !Store.online)
+      ? '<div class="demo-banner">Can\'t reach the live database right now — check your internet connection. Nothing you do will be saved until this reconnects.</div>'
+      : "";
+
+    var appEl = document.querySelector(".app");
+    appEl.classList.toggle("theme-levelup", state.theme==="levelup");
+    appEl.classList.toggle("theme-competition", state.theme==="competition");
+    var themeBtn = document.getElementById("theme-btn");
+    themeBtn.classList.toggle("active", state.theme!=="guardian");
+    var THEME_NEXT = { guardian:"Level-Up", levelup:"Competition", competition:"Guardian" };
+    themeBtn.title = "Now: "+THEME_COPY[state.theme].name+" — tap for "+THEME_NEXT[state.theme];
+    var copy = THEME_COPY[state.theme];
+    var titleEl = document.getElementById("board-title"), subEl = document.getElementById("board-subtitle");
+    if(titleEl){ titleEl.textContent = copy.title; subEl.textContent = copy.subtitle; }
+  }
+
+  function studentCard(s, id){
+    return state.theme==="levelup" ? studentCardLevelUp(s, id) : studentCardGuardian(s, id);
+  }
+
+  function studentCardGuardian(s, id){
+    var wk = isoDate(mondayOf(today()));
+    var score = weekScore(s, wk);
+    var b = band(score);
+    var shields = s.shields||0;
+    var shieldIcons = "";
+    var showCount = Math.min(shields,6);
+    for(var i=0;i<showCount;i++) shieldIcons += shieldSvg("var(--gold)");
+    if(shields>6) shieldIcons += '<span class="more">+'+(shields-6)+'</span>';
+    if(shields===0) shieldIcons = shieldSvg("var(--line)");
+    // "Clean week" badge: score is a full 100 AND something was actually logged this week
+    // (so a week with zero activity yet doesn't get flagged as a win).
+    var perfect = score===100 && s.events.some(function(e){ return e.weekStart===wk; });
+    return (
+      '<div class="g-card" data-id="'+id+'" tabindex="0" role="button" aria-label="Log an event for '+esc(s.name)+'">'+
+        '<div class="band-edge" style="background:'+BAND_COLOR[b]+'"></div>'+
+        (perfect?'<div class="perfect-badge">Clean week</div>':'')+
+        '<div class="row1">'+
+          '<div class="avatar" style="--avatar-ring:'+BAND_COLOR[b]+'">'+initials(s.name)+'</div>'+
+          '<div class="name-block"><div class="first">'+esc(firstName(s.name))+'</div><div class="rest">'+esc(restName(s.name))+'</div></div>'+
+        '</div>'+
+        '<div class="score-row"><span class="score-num" style="color:'+BAND_COLOR[b]+'">'+score+'</span><span class="score-label">this week</span></div>'+
+        '<div class="shields-row">'+shieldIcons+'</div>'+
+        attendanceRow(s, id) +
+      '</div>'
+    );
+  }
+
+  function studentCardLevelUp(s, id){
+    var wk = isoDate(mondayOf(today()));
+    var score = weekScore(s, wk);
+    var lv = levelInfo(s);
+    var pct = Math.round((lv.progress/lv.need)*100);
+    return (
+      '<div class="g-card" data-id="'+id+'" tabindex="0" role="button" aria-label="Log an event for '+esc(s.name)+'" style="--rank-color:'+lv.rank.color+'; --rank-grad:'+lv.rank.grad+'">'+
+        '<div class="band-edge"></div>'+
+        '<div class="lvl-top">'+
+          '<div class="lvl-avatar-wrap">'+
+            '<div class="lvl-avatar">'+initials(s.name)+'</div>'+
+            '<div class="lvl-badge">LV '+lv.level+'</div>'+
+          '</div>'+
+          '<div class="name-block">'+
+            '<div class="lvl-rank-tag">'+lv.rank.name+'</div>'+
+            '<div class="lvl-name">'+esc(firstName(s.name))+'</div>'+
+          '</div>'+
+          '<span class="wk-chip" style="color:'+BAND_COLOR[band(score)]+'">'+score+' this wk</span>'+
+        '</div>'+
+        '<div class="xp-wrap">'+
+          '<div class="xp-track"><div class="xp-fill" style="width:'+pct+'%"></div></div>'+
+          '<div class="xp-caption"><span>'+lv.progress+'/'+lv.need+' to Lv '+(lv.level+1)+'</span><span>'+lv.earned+' XP total</span></div>'+
+        '</div>'+
+        attendanceRow(s, id) +
+      '</div>'
+    );
+  }
+
+  function studentCardCompetition(s, id, rank, leaderScore){
+    var wk = isoDate(mondayOf(today()));
+    var score = weekScore(s, wk);
+    var tier = rank===1?"top1":rank===2?"top2":rank===3?"top3":"";
+    var medal = rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":("#"+rank);
+    var pct = leaderScore>0 ? Math.min(100, Math.max(6, Math.round((score/leaderScore)*100))) : 100;
+    var gapText = rank===1 ? "Leading the pack! 🔥" : ("−"+(leaderScore-score)+" pts behind #1");
+    return (
+      '<div class="g-card" data-id="'+id+'" tabindex="0" role="button" aria-label="Log an event for '+esc(s.name)+'">'+
+        '<div class="comp-rank-badge '+tier+'">'+medal+'</div>'+
+        '<div class="comp-top">'+
+          '<div class="comp-name">'+esc(firstName(s.name))+'</div>'+
+          '<div class="comp-score" style="color:'+BAND_COLOR[band(score)]+'">'+score+'</div>'+
+          '<div class="comp-gap'+(rank===1?" leading":"")+'">'+gapText+'</div>'+
+        '</div>'+
+        '<div class="track-wrap"><div class="track-fill '+tier+'" style="width:'+pct+'%"></div></div>'+
+        attendanceRow(s, id) +
+      '</div>'
+    );
+  }
+
+  // Delegated once at boot (see bottom of file) rather than re-attached on
+  // every render, so repeated board renders never stack duplicate listeners.
+  function onBoardGridClick(e){
+    var attBtn = e.target.closest(".att-btn");
+    if(attBtn){ e.stopPropagation(); markAttendance(attBtn.getAttribute("data-id"), attBtn.getAttribute("data-att")); return; }
+    var card = e.target.closest(".g-card");
+    if(card) openModal(card.getAttribute("data-id"));
+  }
+  function onBoardGridKeydown(e){
+    if(e.key!=="Enter" && e.key!==" ") return;
+    if(e.target.closest(".att-btn")) return; // native <button> already handles Enter/Space
+    var card = e.target.closest(".g-card");
+    if(card){ e.preventDefault(); openModal(card.getAttribute("data-id")); }
+  }
+
+  function renderBoard(){
+    var grid = document.getElementById("board-grid");
+    if(state.theme==="competition"){
+      var wk = isoDate(mondayOf(today()));
+      var rows = currentRoster().map(function(r){
+        var s = Store.students[r.id]||emptyStudentDoc(r.name);
+        return { id:r.id, s:s, score:weekScore(s,wk) };
+      });
+      rows.sort(function(a,b){ return b.score-a.score; });
+      var leaderScore = rows.length ? rows[0].score : 100;
+      grid.innerHTML = rows.map(function(row,i){ return studentCardCompetition(row.s, row.id, i+1, leaderScore); }).join("");
+    } else {
+      grid.innerHTML = currentRoster().map(function(r){ return studentCard(Store.students[r.id]||emptyStudentDoc(r.name), r.id); }).join("");
+    }
+    renderAttendanceSummary();
+  }
+
+  function openModal(id){
+    state.selectedId = id;
+    renderModal();
+    document.getElementById("overlay").classList.add("open");
+  }
+  function closeModal(){ document.getElementById("overlay").classList.remove("open"); state.selectedId=null; }
+
+  function renderModal(msg, msgTone){
+    var id = state.selectedId; if(!id) return;
+    var s = Store.students[id]||emptyStudentDoc("");
+    var wk = isoDate(mondayOf(today()));
+    var score = weekScore(s, wk);
+    var b = band(score);
+    var body = document.getElementById("modal-body");
+    var rulesHtml = Store.rules.map(function(r,i){
+      var isReward = r.category==="Reward";
+      var dotColor = isReward ? "var(--gold)" : (r.points<=-8 ? "var(--bad)" : (r.points<=-4 ? "var(--warn)" : "var(--muted)"));
+      return '<button class="rule-btn" data-rule="'+i+'"><span class="dot" style="background:'+dotColor+'"></span>'+
+        '<span class="lbl">'+esc(r.label)+'</span><span class="pts" style="color:'+(isReward?"var(--gold-text)":"var(--ink-2)")+'">'+(isReward?"+1 shield":r.points)+'</span></button>';
+    }).join("");
+
+    body.innerHTML =
+      '<div class="modal-head">'+
+        '<div class="avatar" style="--avatar-ring:'+BAND_COLOR[b]+'">'+initials(s.name)+'</div>'+
+        '<div><h3>'+esc(s.name)+'</h3><div class="m-sub">Tap an event to log it instantly</div></div>'+
+        '<button class="modal-close" id="modal-close-btn" aria-label="Close">'+
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="4" x2="20" y2="20"/><line x1="20" y1="4" x2="4" y2="20"/></svg>'+
+        '</button>'+
+      '</div>'+
+      (msg?'<div class="flash-msg" style="background:'+(msgTone==='bad'?'rgba(208,59,59,0.12)':'rgba(201,151,63,0.14)')+';color:'+(msgTone==='bad'?'var(--bad)':'var(--gold-text)')+'">'+msg+'</div>':'')+
+      (state.theme==="levelup"
+        ? '<div class="recap">'+
+            '<div class="item"><div class="v" style="color:'+BAND_COLOR[b]+'">'+score+'</div><div class="l">This week</div></div>'+
+            '<div class="item"><div class="v" style="color:'+levelInfo(s).rank.color+'">Lv '+levelInfo(s).level+'</div><div class="l">'+levelInfo(s).rank.name+'</div></div>'+
+            '<div class="item"><div class="v">'+levelInfo(s).earned+'</div><div class="l">XP (all time)</div></div>'+
+          '</div>'
+        : '<div class="recap">'+
+            '<div class="item"><div class="v" style="color:'+BAND_COLOR[b]+'">'+score+'</div><div class="l">This week</div></div>'+
+            '<div class="item"><div class="v">'+(s.shields||0)+'</div><div class="l">Shields</div></div>'+
+            '<div class="item"><div class="v">'+(s.totals.incidents||0)+'</div><div class="l">Incidents (all time)</div></div>'+
+          '</div>')+
+      '<div class="rule-list">'+rulesHtml+'</div>'+
+      '<div class="undo-row"><button class="ghost-btn" id="undo-btn" '+(s.events.length?"":"disabled")+'>Undo last action for '+esc(firstName(s.name))+'</button></div>';
+
+    document.getElementById("modal-close-btn").addEventListener("click", closeModal);
+    body.querySelectorAll(".rule-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var rule = Store.rules[parseInt(btn.getAttribute("data-rule"),10)];
+        handleTap(id, rule, btn);
+      });
+    });
+    var undoBtn = document.getElementById("undo-btn");
+    if(undoBtn) undoBtn.addEventListener("click", function(){
+      var reverted = undoLast(Store.students[id]);
+      Store.saveStudent(id, reverted);
+      renderModal("Last action undone.", "bad");
+      renderAll();
+    });
+  }
+
+  function showLevelUpToast(name, lv){
+    var toast = document.getElementById("lvlup-toast");
+    toast.innerHTML = '🎉 <span>'+esc(name)+' reached <span class="lv-num">Level '+lv.level+'</span> — '+lv.rank.name+'!</span>';
+    toast.classList.add("show");
+    clearTimeout(toast._hideTimer);
+    toast._hideTimer = setTimeout(function(){ toast.classList.remove("show"); }, 2600);
+  }
+
+  function handleTap(id, rule, btnEl){
+    var s = Store.students[id];
+    var levelBefore = levelInfo(s).level;
+    var result = applyEvent(s, rule);
+    Store.saveStudent(id, result.doc);
+
+    var rect = btnEl.getBoundingClientRect();
+    var cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+    var levelAfter = levelInfo(result.doc).level;
+    var leveledUp = state.theme==="levelup" && result.isReward && levelAfter>levelBefore;
+
+    if(result.isReward){
+      if(leveledUp){
+        playFanfare();
+        burstConfetti(cx,cy);
+        burstConfetti(window.innerWidth/2, window.innerHeight*0.3);
+        showLevelUpToast(firstName(result.doc.name), levelInfo(result.doc));
+        renderModal("Shield awarded — and a LEVEL UP! 🎉 Now Level "+levelInfo(result.doc).level+" ("+levelInfo(result.doc).rank.name+").", null);
+      } else {
+        playChime();
+        burstConfetti(cx,cy);
+        renderModal("Shield awarded! 🛡️ "+firstName(result.doc.name)+" now has "+result.doc.shields+".", null);
+      }
+    } else if(result.shielded){
+      playShieldBlock();
+      renderModal("Shield blocked it — no points lost. "+result.doc.shields+" shield(s) left.", null);
+    } else {
+      playDeduct();
+      renderModal((rule.points)+" points logged for "+esc(rule.label)+".", "bad");
+    }
+    renderAll();
+  }
+
+  /* ---------- leaderboard ---------- */
+  function renderLeaderboard(){
+    var isLvl = state.theme==="levelup";
+    var wk = isoDate(mondayOf(today()));
+    var prevWk = isoDate(addDays(mondayOf(today()),-7));
+    var rows = currentRoster().map(function(r){
+      var s = Store.students[r.id]||emptyStudentDoc(r.name);
+      return { id:r.id, name:s.name, score:weekScore(s,wk), prevScore:weekScore(s,prevWk), shields:s.shields||0, incidents:s.totals.incidents||0, lv:levelInfo(s) };
+    });
+    rows.sort(function(a,b){ return b.score-a.score || b.shields-a.shields; });
+
+    var top = rows[0];
+    document.getElementById("gotw-slot").innerHTML = top ? (
+      isLvl ?
+      '<div class="gotw">'+
+        '<div class="avatar" style="--avatar-ring:'+top.lv.rank.color+'; background:'+top.lv.rank.grad+'">'+initials(top.name)+'</div>'+
+        '<div><div class="g-title">Top of the class</div><div class="g-name">'+esc(top.name)+'</div></div>'+
+        '<div class="g-score"><div class="v">Lv '+top.lv.level+'</div><div style="font-size:0.72rem;opacity:0.8;">'+top.lv.rank.name+'</div></div>'+
+      '</div>' :
+      '<div class="gotw">'+
+        '<div class="avatar" style="--avatar-ring:var(--gold)">'+initials(top.name)+'</div>'+
+        '<div><div class="g-title">Guardian of the week</div><div class="g-name">'+esc(top.name)+'</div></div>'+
+        '<div class="g-score"><div class="v">'+top.score+'</div><div style="font-size:0.72rem;opacity:0.8;">points</div></div>'+
+      '</div>') : "";
+
+    var avg = rows.length ? Math.round(rows.reduce(function(a,r){return a+r.score;},0)/rows.length*10)/10 : 0;
+    var totalShields = rows.reduce(function(a,r){return a+r.shields;},0);
+    var clean = rows.filter(function(r){return r.incidents===0 || r.score===100;}).length;
+    var totalXp = rows.reduce(function(a,r){return a+r.lv.earned;},0);
+    document.getElementById("stat-tiles").innerHTML = isLvl ?
+      '<div class="stat-tile"><div class="v">'+avg+'</div><div class="l">Class average this week</div></div>'+
+      '<div class="stat-tile"><div class="v">'+totalXp+'</div><div class="l">Total XP earned all-time</div></div>'+
+      '<div class="stat-tile"><div class="v">'+clean+'</div><div class="l">Clean guardians this week</div></div>' :
+      '<div class="stat-tile"><div class="v">'+avg+'</div><div class="l">Class average this week</div></div>'+
+      '<div class="stat-tile"><div class="v">'+totalShields+'</div><div class="l">Shields active in class</div></div>'+
+      '<div class="stat-tile"><div class="v">'+clean+'</div><div class="l">Clean guardians this week</div></div>';
+
+    var lbCol4 = document.getElementById("lb-col-4");
+    if(lbCol4) lbCol4.textContent = isLvl ? "Level" : "Shields";
+
+    document.getElementById("lb-body").innerHTML = rows.map(function(r,i){
+      var b = band(r.score);
+      var diff = r.score - r.prevScore;
+      var trendTxt = diff>0? ("▲ +"+diff) : diff<0 ? ("▼ "+diff) : "–";
+      var trendColor = diff>0? "var(--good)" : diff<0 ? "var(--bad)" : "var(--muted)";
+      var avatarStyle = isLvl ? '--avatar-ring:'+r.lv.rank.color+'; background:'+r.lv.rank.grad : '--avatar-ring:'+BAND_COLOR[b];
+      var col4 = isLvl ? ('Lv '+r.lv.level+' <span style="color:'+r.lv.rank.color+';font-weight:700;">·</span> '+r.lv.rank.name) : r.shields;
+      return '<tr><td><span class="rank-num">'+(i+1)+'</span></td>'+
+        '<td><div class="lb-name"><div class="avatar" style="'+avatarStyle+'">'+initials(r.name)+'</div>'+esc(r.name)+'</div></td>'+
+        '<td style="color:'+BAND_COLOR[b]+'; font-weight:700;">'+r.score+'</td>'+
+        '<td>'+col4+'</td>'+
+        '<td class="trend" style="color:'+trendColor+'">'+trendTxt+'</td></tr>';
+    }).join("");
+  }
+
+  /* ---------- history ---------- */
+  function ensureStudentSelect(){
+    var sel = document.getElementById("student-select");
+    if(state.lastRosterClassId===Store.classId && sel.options.length===currentRoster().length) return;
+    state.lastRosterClassId = Store.classId;
+    sel.innerHTML = currentRoster().map(function(r){ return '<option value="'+r.id+'">'+esc(r.name)+'</option>'; }).join("");
+    sel.value = currentRoster()[0].id;
+    sel.onchange = renderHistory; // assignment (not addEventListener) so re-building the list on a class switch never stacks duplicate handlers
+  }
+
+  function renderChart(student, weeks, upTo){
+    var wrap = document.getElementById("chart-wrap");
+    var W=680,H=220,padL=34,padR=16,padT=16,padB=28;
+    var pts = weeks.filter(function(w){ return w<=upTo; }).map(function(w){ return {w:w, score: weekScore(student, isoDate(w))}; });
+    if(!pts.length){ wrap.innerHTML='<p style="color:var(--muted);font-size:0.85rem;">No weeks yet this year.</p>'; return; }
+    var x = function(i){ return padL + (pts.length===1?0:i*(W-padL-padR)/(pts.length-1)); };
+    var y = function(v){ return padT + (100-v)/100*(H-padT-padB); };
+    var linePts = pts.map(function(p,i){ return x(i)+","+y(p.score); }).join(" ");
+    var dots = pts.map(function(p,i){
+      var b=band(p.score);
+      return '<circle data-i="'+i+'" cx="'+x(i)+'" cy="'+y(p.score)+'" r="4.5" fill="'+BAND_COLOR[b]+'" stroke="var(--surface)" stroke-width="1.5"></circle>';
+    }).join("");
+    var gridLines = [100,90,75,50,0].map(function(v){
+      return '<line x1="'+padL+'" x2="'+(W-padR)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="var(--line)" stroke-width="1"></line>'+
+        '<text x="'+(padL-8)+'" y="'+(y(v)+3)+'" font-size="10" fill="var(--muted)" text-anchor="end">'+v+'</text>';
+    }).join("");
+    var xLabels = pts.map(function(p,i){
+      if(pts.length>10 && i%Math.ceil(pts.length/8)!==0 && i!==pts.length-1) return "";
+      return '<text x="'+x(i)+'" y="'+(H-8)+'" font-size="9.5" fill="var(--muted)" text-anchor="middle">'+fmtShort(p.w)+'</text>';
+    }).join("");
+
+    wrap.innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;" id="trend-svg">'+
+      gridLines+
+      '<polyline points="'+linePts+'" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>'+
+      dots+
+      xLabels+
+      '</svg><div class="tooltip" id="chart-tip"></div>';
+
+    var svg = document.getElementById("trend-svg");
+    var tip = document.getElementById("chart-tip");
+    svg.querySelectorAll("circle").forEach(function(c){
+      c.addEventListener("mouseenter", function(){
+        var i = parseInt(c.getAttribute("data-i"),10);
+        var p = pts[i];
+        var rectSvg = svg.getBoundingClientRect();
+        var scaleX = rectSvg.width / W, scaleY = rectSvg.height / H;
+        tip.style.left = (parseFloat(c.getAttribute("cx"))*scaleX) + "px";
+        tip.style.top = (parseFloat(c.getAttribute("cy"))*scaleY) + "px";
+        tip.textContent = fmtShort(p.w)+": "+p.score;
+        tip.style.opacity = 1;
+      });
+      c.addEventListener("mouseleave", function(){ tip.style.opacity=0; });
+    });
+  }
+
+  function renderHistory(){
+    ensureStudentSelect();
+    var sel = document.getElementById("student-select");
+    if(!sel.value) sel.value = currentRoster()[0].id;
+    var s = Store.students[sel.value]||emptyStudentDoc("");
+    document.getElementById("chart-title").textContent = firstName(s.name)+"'s weekly score trend";
+    var weeks = weekList(Store.meta);
+    var upTo = mondayOf(today());
+    renderChart(s, weeks, upTo);
+
+    var weeklyTable = document.getElementById("weekly-table");
+    var visibleWeeks = weeks.filter(function(w){return w<=upTo;});
+    var head = '<tr><th>Guardian</th>'+visibleWeeks.map(function(w){return '<th>'+fmtShort(w)+'</th>';}).join("")+'<th>Avg</th></tr>';
+    var rows = currentRoster().map(function(r){
+      var st = Store.students[r.id]||emptyStudentDoc(r.name);
+      var scores = visibleWeeks.map(function(w){ return weekScore(st, isoDate(w)); });
+      var avg = scores.length? Math.round(scores.reduce(function(a,b){return a+b;},0)/scores.length*10)/10 : "—";
+      return '<tr><td>'+esc(firstName(st.name))+' '+esc(restName(st.name).slice(0,1))+'.</td>'+
+        scores.map(function(sc){ return '<td class="'+BAND_TEXTCLASS[band(sc)]+'">'+sc+'</td>'; }).join("")+
+        '<td style="font-weight:700;">'+avg+'</td></tr>';
+    }).join("");
+    weeklyTable.innerHTML = head+rows;
+
+    var months = [];
+    weeks.forEach(function(w){
+      var key = w.getFullYear()+"-"+pad2(w.getMonth()+1);
+      if(w>upTo) return;
+      var m = months.find(function(m){return m.key===key;});
+      if(!m){ m={key:key, label:fmtMonthYear(w), weeks:[]}; months.push(m); }
+      m.weeks.push(w);
+    });
+    var mHead = '<tr><th>Guardian</th>'+months.map(function(m){return '<th>'+m.label+'</th>';}).join("")+'<th>Year Avg</th></tr>';
+    var mRows = currentRoster().map(function(r){
+      var st = Store.students[r.id]||emptyStudentDoc(r.name);
+      var allAvgs=[];
+      var cells = months.map(function(m){
+        var scores = m.weeks.map(function(w){return weekScore(st, isoDate(w));});
+        var avg = Math.round(scores.reduce(function(a,b){return a+b;},0)/scores.length*10)/10;
+        allAvgs.push(avg);
+        return '<td class="'+BAND_TEXTCLASS[band(avg)]+'">'+avg+'</td>';
+      }).join("");
+      var yearAvg = allAvgs.length? Math.round(allAvgs.reduce(function(a,b){return a+b;},0)/allAvgs.length*10)/10 : "—";
+      return '<tr><td>'+esc(firstName(st.name))+' '+esc(restName(st.name).slice(0,1))+'.</td>'+cells+'<td style="font-weight:700;">'+yearAvg+'</td></tr>';
+    }).join("");
+    document.getElementById("monthly-table").innerHTML = mHead+mRows;
+
+    window._historyExportData = { visibleWeeks:visibleWeeks, months:months };
+  }
+
+  function csvEscape(v){ v=String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+
+  function triggerDownload(filename, content, mime){
+    try{
+      var blob = new Blob([content], {type: mime||"text/plain"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+    }catch(e){
+      alert("Couldn't start the download in this browser. Try a different browser, or copy the data manually.");
+    }
+  }
+
+  function exportCsv(filename, rowsArr){
+    var csv = rowsArr.map(function(row){ return row.map(csvEscape).join(","); }).join("\r\n");
+    triggerDownload(filename, csv, "text/csv");
+  }
+
+  document.getElementById("export-weekly").addEventListener("click", function(){
+    var data = window._historyExportData; if(!data) return;
+    var rows = [["Guardian"].concat(data.visibleWeeks.map(fmtShort), ["Average"])];
+    currentRoster().forEach(function(r){
+      var st = Store.students[r.id]||emptyStudentDoc(r.name);
+      var scores = data.visibleWeeks.map(function(w){ return weekScore(st, isoDate(w)); });
+      var avg = scores.length? Math.round(scores.reduce(function(a,b){return a+b;},0)/scores.length*10)/10 : "";
+      rows.push([st.name].concat(scores, [avg]));
+    });
+    exportCsv("weekly_history_"+Store.classId+".csv", rows);
+  });
+  document.getElementById("export-monthly").addEventListener("click", function(){
+    var data = window._historyExportData; if(!data) return;
+    var rows = [["Guardian"].concat(data.months.map(function(m){return m.label;}), ["Year Average"])];
+    currentRoster().forEach(function(r){
+      var st = Store.students[r.id]||emptyStudentDoc(r.name);
+      var allAvgs=[];
+      var vals = data.months.map(function(m){
+        var scores = m.weeks.map(function(w){return weekScore(st, isoDate(w));});
+        var avg = Math.round(scores.reduce(function(a,b){return a+b;},0)/scores.length*10)/10;
+        allAvgs.push(avg); return avg;
+      });
+      var yearAvg = allAvgs.length? Math.round(allAvgs.reduce(function(a,b){return a+b;},0)/allAvgs.length*10)/10 : "";
+      rows.push([st.name].concat(vals, [yearAvg]));
+    });
+    exportCsv("monthly_averages_"+Store.classId+".csv", rows);
+  });
+  document.getElementById("export-attendance").addEventListener("click", function(){
+    var todayKey = isoDate(today());
+    var rows = [["Guardian", "Status", "Date"]];
+    currentRoster().forEach(function(r){
+      var st = Store.students[r.id]||emptyStudentDoc(r.name);
+      var status = (st.attendance && st.attendance[todayKey]) || "not marked";
+      rows.push([st.name, status, todayKey]);
+    });
+    exportCsv("attendance_"+Store.classId+"_"+todayKey+".csv", rows);
+  });
+  document.getElementById("export-backup").addEventListener("click", function(){
+    var data = { exportedAt:new Date().toISOString(), classId:Store.classId, meta:Store.meta, rules:Store.rules, students:Store.students };
+    triggerDownload("guardian_board_backup_"+Store.classId+".json", JSON.stringify(data, null, 2), "application/json");
+  });
+
+  /* ---------- settings ---------- */
+  function renderSettings(){
+    document.getElementById("set-classname").value = Store.meta.className||"";
+    document.getElementById("set-yearstart").value = Store.meta.yearStart||"";
+    document.getElementById("set-yearend").value = Store.meta.yearEnd||"";
+    document.getElementById("sound-default-toggle").checked = !!Store.meta.soundDefault;
+    document.getElementById("projector-toggle").checked = !!state.projector;
+
+    var list = document.getElementById("rule-edit-list");
+    list.innerHTML = Store.rules.map(function(r,i){
+      return '<div class="rule-edit-row" data-i="'+i+'">'+
+        '<input type="text" value="'+esc(r.label)+'" data-f="label">'+
+        '<input type="number" value="'+r.points+'" data-f="points">'+
+        '<select data-f="category"><option value="Infraction" '+(r.category==="Infraction"?"selected":"")+'>Infraction</option><option value="Reward" '+(r.category==="Reward"?"selected":"")+'>Reward</option></select>'+
+        '<button class="icon-x" data-remove="'+i+'" aria-label="Remove">✕</button>'+
+      '</div>';
+    }).join("");
+
+    var corr = document.getElementById("correction-list");
+    corr.innerHTML = '<div class="corr-row" style="font-weight:700;color:var(--ink-2);font-size:0.78rem;text-transform:uppercase;"><span>Guardian</span><span>Shields</span><span></span></div>'+
+      currentRoster().map(function(r){
+        var s = Store.students[r.id]||emptyStudentDoc(r.name);
+        return '<div class="corr-row" data-id="'+r.id+'"><span>'+esc(s.name)+'</span>'+
+          '<input type="number" min="0" value="'+(s.shields||0)+'" data-shields>'+
+          '<button class="btn" data-apply>Apply</button></div>';
+      }).join("");
+    corr.querySelectorAll("[data-apply]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var row = btn.closest(".corr-row");
+        var id = row.getAttribute("data-id");
+        var val = Math.max(0, parseInt(row.querySelector("[data-shields]").value,10)||0);
+        var doc = JSON.parse(JSON.stringify(Store.students[id]));
+        doc.shields = val;
+        Store.saveStudent(id, doc);
+        renderAll();
+      });
+    });
+  }
+
+  document.getElementById("add-rule-row").addEventListener("click", function(){
+    Store.rules = Store.rules.concat([{id:"custom"+Date.now(), label:"New event", points:-1, category:"Infraction"}]);
+    renderSettings();
+  });
+  document.getElementById("rule-edit-list").addEventListener("click", function(e){
+    var rm = e.target.getAttribute && e.target.getAttribute("data-remove");
+    if(rm!==null && rm!==undefined && rm!==""){
+      Store.rules = Store.rules.filter(function(_,i){ return String(i)!==rm; });
+      renderSettings();
+    }
+  });
+  document.getElementById("save-rules").addEventListener("click", function(){
+    var rows = document.querySelectorAll(".rule-edit-row");
+    var newRules = [];
+    rows.forEach(function(row){
+      newRules.push({
+        id: "r"+Math.random().toString(36).slice(2,8),
+        label: row.querySelector('[data-f="label"]').value || "Untitled",
+        points: parseInt(row.querySelector('[data-f="points"]').value,10)||0,
+        category: row.querySelector('[data-f="category"]').value
+      });
+    });
+    Store.saveRules(newRules);
+    renderAll();
+  });
+  document.getElementById("save-meta").addEventListener("click", function(){
+    Store.saveMeta({
+      className: document.getElementById("set-classname").value,
+      yearStart: document.getElementById("set-yearstart").value,
+      yearEnd: document.getElementById("set-yearend").value,
+      soundDefault: document.getElementById("sound-default-toggle").checked
+    });
+    renderAll();
+  });
+  document.getElementById("projector-toggle").addEventListener("change", function(e){
+    state.projector = e.target.checked;
+    document.body.style.fontSize = state.projector ? "1.12rem" : "";
+    try{ localStorage.setItem("gb_projector", state.projector?"1":"0"); }catch(err){}
+  });
+
+  /* ================= view switching ================= */
+  document.querySelectorAll(".tab-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      state.view = btn.getAttribute("data-view");
+      document.querySelectorAll("section.view").forEach(function(v){ v.classList.remove("active"); });
+      document.getElementById("view-"+state.view).classList.add("active");
+      renderAll();
+    });
+  });
+
+  document.getElementById("overlay").addEventListener("click", function(e){ if(e.target.id==="overlay") closeModal(); });
+  document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeModal(); });
+
+  // Delegated once here (not inside renderBoard) so re-rendering the grid on
+  // every score/attendance change never stacks duplicate click handlers.
+  document.getElementById("board-grid").addEventListener("click", onBoardGridClick);
+  document.getElementById("board-grid").addEventListener("keydown", onBoardGridKeydown);
+
+  /* ================= class switcher ================= */
+  var classSelectEl = document.getElementById("class-select");
+  classSelectEl.innerHTML = CLASS_ORDER.map(function(id){ return '<option value="'+id+'">'+esc(CLASSES[id].label)+'</option>'; }).join("");
+  classSelectEl.addEventListener("change", function(){
+    switchClass(classSelectEl.value);
+  });
+
+  function switchClass(classId){
+    if(!CLASSES[classId] || classId===Store.classId){ classSelectEl.value = Store.classId; return; }
+    closeModal();
+    try{ localStorage.setItem("gb_class", classId); }catch(e){}
+    Store.setClass(classId);
+    classSelectEl.value = classId;
+    renderAll();
+  }
+
+  document.getElementById("mute-btn").addEventListener("click", function(){
+    muted = !muted;
+    hasStoredMute = true;
+    try{ localStorage.setItem("gb_muted", muted?"1":"0"); }catch(e){}
+    renderTopbar();
+  });
+
+  // Display style is a per-device preference (like mute/projector) — this way
+  // a teacher's projector can show Level-Up while a student's own device still
+  // shows Guardian, and switching it never touches the shared class data.
+  var THEME_ORDER = ["guardian", "levelup", "competition"];
+  document.getElementById("theme-btn").addEventListener("click", function(){
+    state.theme = THEME_ORDER[(THEME_ORDER.indexOf(state.theme)+1) % THEME_ORDER.length];
+    try{ localStorage.setItem("gb_theme", state.theme); }catch(e){}
+    renderAll();
+  });
+
+  /* ================= main render dispatch ================= */
+  function renderAll(){
+    renderTopbar();
+    if(state.view==="board") renderBoard();
+    else if(state.view==="leaderboard") renderLeaderboard();
+    else if(state.view==="history") renderHistory();
+    else if(state.view==="settings") renderSettings();
+    if(state.selectedId) renderModal();
+  }
+
+  /* ================= boot ================= */
+  var initialClassId = "8C";
+  try{
+    var storedMute = localStorage.getItem("gb_muted");
+    if(storedMute!==null){ muted = storedMute==="1"; hasStoredMute = true; }
+    var storedProjector = localStorage.getItem("gb_projector");
+    if(storedProjector==="1"){ state.projector=true; document.body.style.fontSize="1.12rem"; }
+    var storedClass = localStorage.getItem("gb_class");
+    if(storedClass && CLASSES[storedClass]){ initialClassId = storedClass; }
+    var storedTheme = localStorage.getItem("gb_theme");
+    if(THEME_COPY.hasOwnProperty(storedTheme)){ state.theme = storedTheme; }
+  }catch(e){}
+
+  classSelectEl.value = initialClassId;
+  Store.onChange(renderAll);
+  Store.setClass(initialClassId);
+  renderAll();
+})();
+</script>
+</body>
+</html>
